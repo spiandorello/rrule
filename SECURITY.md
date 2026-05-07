@@ -13,7 +13,7 @@ The list below is ordered by severity, then by exploitability. Checked items are
 ## MED — degraded performance / footgun
 
 - [x] **O(n²) RFC line unfolding.** `splitIntoLines(unfold=true)` mutated the array via `splice` inside a `while` loop; a payload of N continuation or blank lines was O(N²) (measured: N=100k took ~3.3s, N=200k took ~13.5s). **Fix:** rewrote as a single forward pass that builds the output array — N=100k now completes in ~5ms. Only the `unfold=true` path was affected. _src/rrulestr.ts; perf-regression tests in test/rrulestr.test.ts._
-- [ ] **Bracket-assignment in option parser.** Parsed key is lower-cased and assigned via `options[optionKey] = num` with `@ts-ignore`. Currently mitigated by an upstream switch-statement whitelist, but the pattern is a refactoring footgun for prototype pollution. _src/parsestring.ts:84._ **Plan:** drop `@ts-ignore`, narrow the assignment via a typed `Record<keyof Options, ...>` and reject unknown keys explicitly.
+- [x] **Bracket-assignment in option parser.** Parsed key was lower-cased and assigned via `options[optionKey] = num` with `@ts-ignore`. **Fix:** split the switch into one case per RFC key with explicit, typed assignments (no bracket access, no `@ts-ignore`). Also tightened `parseNumber`: non-numeric values now throw with a per-key error instead of silently storing a string, and `COUNT`/`INTERVAL` reject comma-separated input. _src/parsestring.ts; tests in test/parsestring.test.ts._
 - [ ] **`between()` is ~10× slower with TZID** (upstream issue [#580](https://github.com/jkbrzt/rrule/issues/580)). Per-request perf cliff for any TZID-aware query. **Plan:** profile and reduce per-iteration timezone conversions; cache where safe.
 
 ## LOW — defense in depth
