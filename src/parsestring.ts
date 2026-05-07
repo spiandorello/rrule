@@ -106,20 +106,34 @@ function parseRrule(line: string) {
         options.wkst = Days[value.toUpperCase() as keyof typeof Days]
         break
       case 'COUNT':
+        options.count = parseScalarNumber(key, value)
+        break
       case 'INTERVAL':
+        options.interval = parseScalarNumber(key, value)
+        break
       case 'BYSETPOS':
+        options.bysetpos = parseNumberList(key, value)
+        break
       case 'BYMONTH':
+        options.bymonth = parseNumberList(key, value)
+        break
       case 'BYMONTHDAY':
+        options.bymonthday = parseNumberList(key, value)
+        break
       case 'BYYEARDAY':
+        options.byyearday = parseNumberList(key, value)
+        break
       case 'BYWEEKNO':
+        options.byweekno = parseNumberList(key, value)
+        break
       case 'BYHOUR':
+        options.byhour = parseNumberList(key, value)
+        break
       case 'BYMINUTE':
+        options.byminute = parseNumberList(key, value)
+        break
       case 'BYSECOND':
-        const num = parseNumber(value)
-        const optionKey = key.toLowerCase()
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        options[optionKey] = num
+        options.bysecond = parseNumberList(key, value)
         break
       case 'BYWEEKDAY':
       case 'BYDAY':
@@ -136,7 +150,7 @@ function parseRrule(line: string) {
         options.until = untilStringToDate(value)
         break
       case 'BYEASTER':
-        options.byeaster = Number(value)
+        options.byeaster = parseScalarNumber(key, value)
         break
       default:
         throw new Error("Unknown RRULE property '" + key + "'")
@@ -146,21 +160,25 @@ function parseRrule(line: string) {
   return options
 }
 
-function parseNumber(value: string) {
+function parseScalarNumber(key: string, value: string): number {
   if (value.indexOf(',') !== -1) {
-    const values = value.split(',')
-    return values.map(parseIndividualNumber)
+    throw new Error(`Invalid ${key} value: expected a single integer, got '${value}'`)
   }
-
-  return parseIndividualNumber(value)
+  return parseIndividualNumber(key, value)
 }
 
-function parseIndividualNumber(value: string) {
-  if (/^[+-]?\d+$/.test(value)) {
-    return Number(value)
+function parseNumberList(key: string, value: string): number | number[] {
+  if (value.indexOf(',') !== -1) {
+    return value.split(',').map((v) => parseIndividualNumber(key, v))
   }
+  return parseIndividualNumber(key, value)
+}
 
-  return value
+function parseIndividualNumber(key: string, value: string): number {
+  if (!/^[+-]?\d+$/.test(value)) {
+    throw new Error(`Invalid ${key} value: expected an integer, got '${value}'`)
+  }
+  return Number(value)
 }
 
 function parseWeekday(value: string) {
