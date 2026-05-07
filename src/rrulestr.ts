@@ -218,18 +218,18 @@ function splitIntoLines(s: string, unfold = false) {
     return s.split(/\s/)
   }
 
-  const lines = s.split('\n')
-  let i = 0
-  while (i < lines.length) {
-    // TODO
-    const line = (lines[i] = lines[i].replace(/\s+$/g, ''))
-    if (!line) {
-      lines.splice(i, 1)
-    } else if (i > 0 && line[0] === ' ') {
-      lines[i - 1] += line.slice(1)
-      lines.splice(i, 1)
+  // Single forward pass: build the output array instead of mutating in place.
+  // The previous implementation used `splice(i, 1)` inside a while loop,
+  // which is O(N²) for inputs with many empty or continuation lines.
+  const rawLines = s.split('\n')
+  const lines: string[] = []
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i].replace(/\s+$/g, '')
+    if (!line) continue
+    if (line[0] === ' ' && lines.length > 0) {
+      lines[lines.length - 1] += line.slice(1)
     } else {
-      i += 1
+      lines.push(line)
     }
   }
 

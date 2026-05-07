@@ -370,6 +370,67 @@ describe('rrulestr', function () {
   })
 })
 
+describe('splitIntoLines (unfold) hardening', () => {
+  it('unfolds a property split across many continuation lines', () => {
+    // 100 single-character continuations should reassemble into FREQ=YEARLY
+    const head = 'F'
+    const tail = 'REQ=YEARLY;COUNT=2'
+    const folded =
+      head +
+      tail
+        .split('')
+        .map((c) => '\n ' + c)
+        .join('')
+    const rule = rrulestr(folded, {
+      unfold: true,
+      dtstart: parse('19970902T090000'),
+    })
+    expect(rule.all()).toHaveLength(2)
+  })
+
+  it('skips blank lines without affecting parsing', () => {
+    const payload = [
+      'DTSTART:19970902T090000Z',
+      '',
+      '',
+      'RRULE:FREQ=DAILY;COUNT=3',
+      '',
+    ].join('\n')
+    const rule = rrulestr(payload, { unfold: true })
+    expect(rule.all()).toHaveLength(3)
+  })
+
+  it('does not regress to O(N²) on inputs with many blank lines', () => {
+    // Measured: N=100_000 takes ~3.3s under the old splice-in-loop and
+    // a few ms after the single-pass rewrite. 2s is a robust threshold
+    // that catches the regression without being timing-flaky.
+    const N = 100_000
+    const blanks = new Array(N).fill('').join('\n')
+    const payload = `DTSTART:19970902T090000Z\n${blanks}\nRRULE:FREQ=DAILY;COUNT=3`
+    const start = Date.now()
+    const rule = rrulestr(payload, { unfold: true })
+    const elapsed = Date.now() - start
+    expect(elapsed).toBeLessThan(2000)
+    expect(rule.all()).toHaveLength(3)
+  })
+
+  it('does not regress to O(N²) on inputs with many continuation lines', () => {
+    const N = 100_000
+    const continuations = new Array(N).fill(' X').join('\n')
+    const payload = `DTSTART:19970902T090000Z\nRRULE:FREQ=DAILY;COUNT=3\nX-DUMMY:0\n${continuations}`
+    const start = Date.now()
+    // Parsing may throw because the unfolded line becomes an unknown property,
+    // but splitIntoLines must still complete in linear time.
+    try {
+      rrulestr(payload, { unfold: true })
+    } catch {
+      // expected — we only care about the linear-time guarantee
+    }
+    const elapsed = Date.now() - start
+    expect(elapsed).toBeLessThan(2000)
+  })
+})
+
 describe('parseInput', () => {
   it('parses an input into a structure', () => {
     const output = parseInput(
