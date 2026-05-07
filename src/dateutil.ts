@@ -209,10 +209,15 @@ export const untilStringToDate = function (until: string) {
 // for every accepted iteration via `date.toLocaleString(...)`, which made
 // `.between()` / `.all()` roughly 50× slower in TZID-aware queries than in
 // UTC. Cache one formatter per timezone instead.
-const formatterCache = new Map<string, Intl.DateTimeFormat>()
+//
+// Use a null-prototype dict rather than `Map`: this module loads under the
+// ES5 build target, and `Map` would be the first ES2015 collection global
+// to land in `src/`. The `Intl` global is required by the existing code
+// path, so no new platform requirement is introduced.
+const formatterCache: Record<string, Intl.DateTimeFormat> = Object.create(null)
 
 const getFormatter = function (timeZone: string) {
-  let formatter = formatterCache.get(timeZone)
+  let formatter = formatterCache[timeZone]
   if (!formatter) {
     formatter = new Intl.DateTimeFormat('sv-SE', {
       timeZone,
@@ -224,7 +229,7 @@ const getFormatter = function (timeZone: string) {
       second: '2-digit',
       hour12: false,
     })
-    formatterCache.set(timeZone, formatter)
+    formatterCache[timeZone] = formatter
   }
   return formatter
 }
@@ -236,10 +241,24 @@ const dateTZtoISO8601 = function (date: Date, timeZone: string) {
   return dateStr.replace(' ', 'T') + 'Z'
 }
 
+// `Intl.DateTimeFormat()` (no args) costs ~44µs/call on Node 20, which
+// would dominate per-iteration time if read fresh. But long-lived processes
+// can change `process.env.TZ` between requests, and the previous
+// implementation re-read the local zone every call — so we can't memoise
+// unconditionally without a behavior change. Track the last seen
+// `process.env.TZ` (a ~280ns property read) and invalidate when it changes.
+// In non-Node environments the system timezone is effectively immutable at
+// runtime, so a one-time derivation is safe.
 let cachedLocalTimeZone: string | null = null
+let cachedLocalTimeZoneEnv: string | undefined = undefined
 const getLocalTimeZone = function () {
-  if (cachedLocalTimeZone === null) {
+  const envTz =
+    typeof process !== 'undefined' && process.env
+      ? process.env.TZ
+      : undefined
+  if (cachedLocalTimeZone === null || envTz !== cachedLocalTimeZoneEnv) {
     cachedLocalTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    cachedLocalTimeZoneEnv = envTz
   }
   return cachedLocalTimeZone
 }

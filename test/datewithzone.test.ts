@@ -30,6 +30,68 @@ it('rejects invalid dates', () => {
   )
 })
 
+describe('rezonedDate honors process.env.TZ changes', () => {
+  // Caching the local timezone forever would silently break Node services
+  // that change `process.env.TZ` mid-process. The fix invalidates when the
+  // env var changes between calls.
+  //
+  // We can't observe the *resolved* timezone change here because Jest's
+  // worker environment caches `Intl.DateTimeFormat().resolvedOptions()`
+  // separately from real Node and ignores mid-process `TZ` mutations
+  // (verified empirically). Instead we verify the invalidation contract:
+  // when `process.env.TZ` changes between calls, `Intl.DateTimeFormat()`
+  // is invoked again to re-derive the local zone.
+  const origTz = process.env.TZ
+
+  afterEach(() => {
+    if (origTz === undefined) {
+      delete process.env.TZ
+    } else {
+      process.env.TZ = origTz
+    }
+    jest.restoreAllMocks()
+  })
+
+  it('re-derives local timezone when process.env.TZ changes', () => {
+    const dtf = jest.spyOn(Intl, 'DateTimeFormat')
+    const d = new Date(Date.UTC(2024, 0, 1, 12, 0, 0))
+
+    // Prime the cache so the next change is the one we measure.
+    process.env.TZ = 'UTC'
+    new DateWithZone(d, 'America/New_York').rezonedDate()
+
+    // No-arg call (used to read the local zone). Count invocations.
+    const noArgCallsBefore = dtf.mock.calls.filter(
+      (args) => args.length === 0
+    ).length
+
+    process.env.TZ = 'America/Los_Angeles'
+    new DateWithZone(d, 'America/New_York').rezonedDate()
+
+    const noArgCallsAfter = dtf.mock.calls.filter(
+      (args) => args.length === 0
+    ).length
+
+    expect(noArgCallsAfter).toBeGreaterThan(noArgCallsBefore)
+  })
+
+  it('does not re-derive local timezone when process.env.TZ is stable', () => {
+    process.env.TZ = 'UTC'
+    const d = new Date(Date.UTC(2024, 0, 1, 12, 0, 0))
+    // Prime.
+    new DateWithZone(d, 'America/New_York').rezonedDate()
+
+    const dtf = jest.spyOn(Intl, 'DateTimeFormat')
+    for (let i = 0; i < 5; i++) {
+      new DateWithZone(d, 'America/New_York').rezonedDate()
+    }
+    const noArgCalls = dtf.mock.calls.filter(
+      (args) => args.length === 0
+    ).length
+    expect(noArgCalls).toBe(0)
+  })
+})
+
 describe('rezonedDate perf', () => {
   // Regression guard for the per-iteration `Intl.DateTimeFormat` allocation
   // hot path in `dateInTimeZone` — historically `.between()` with TZID was
