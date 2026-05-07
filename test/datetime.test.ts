@@ -102,6 +102,21 @@ describe('DateTime.add', () => {
     })
   })
 
+  describe('iteration cap signals terminal state to outer iterator', () => {
+    it('forces year past MAXYEAR when cap fires so iter loop terminates', () => {
+      const { dt } = runAdd({
+        freq: Frequency.HOURLY,
+        byhour: [1],
+        interval: 2,
+        until: null,
+      })
+      // After cap, DateTime must be in a terminal state the outer iter loop
+      // recognizes — year > MAXYEAR (9999). Otherwise the outer loop can
+      // emit an invalid candidate.
+      expect(dt.year).toBeGreaterThan(9999)
+    })
+  })
+
   describe('legitimate matches still produce correct results', () => {
     it('HOURLY with matching byhour advances to the next match', () => {
       const { dt } = runAdd({

@@ -160,7 +160,10 @@ export class DateTime extends Time {
       }
 
       if (empty(byhour) || includes(byhour, this.hour)) break
-      if (this.exceededTermination(until, ++iterations)) break
+      if (this.exceededTermination(until, ++iterations)) {
+        this.markExhausted()
+        break
+      }
     }
   }
 
@@ -192,7 +195,10 @@ export class DateTime extends Time {
       ) {
         break
       }
-      if (this.exceededTermination(until, ++iterations)) break
+      if (this.exceededTermination(until, ++iterations)) {
+        this.markExhausted()
+        break
+      }
     }
   }
 
@@ -229,7 +235,10 @@ export class DateTime extends Time {
       ) {
         break
       }
-      if (this.exceededTermination(until, ++iterations)) break
+      if (this.exceededTermination(until, ++iterations)) {
+        this.markExhausted()
+        break
+      }
     }
   }
 
@@ -245,6 +254,13 @@ export class DateTime extends Time {
     if (until && this.getTime() > until.getTime()) return true
     if (iterations >= DateTime.MAX_ADD_ITERATIONS) return true
     return false
+  }
+
+  // After the iteration cap fires, this DateTime no longer satisfies the
+  // BY* filters. Push it past MAXYEAR so the outer iterator's existing
+  // terminal check (iter/index.ts) fires and stops emitting candidates.
+  private markExhausted() {
+    this.year = MAXYEAR + 1
   }
 
   public fixDay() {
