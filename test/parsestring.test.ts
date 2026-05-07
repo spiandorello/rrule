@@ -139,5 +139,26 @@ describe('parseString', () => {
         bysetpos: -1,
       })
     })
+
+    it('rejects non-numeric BYEASTER', () => {
+      // Previously `Number('abc')` produced `NaN`, which silently became an
+      // empty occurrence set instead of failing at parse time.
+      expect(() => parseString('FREQ=YEARLY;BYEASTER=abc')).toThrow(
+        /Invalid BYEASTER value: expected an integer, got 'abc'/
+      )
+    })
+
+    it('rejects comma-separated BYEASTER', () => {
+      expect(() => parseString('FREQ=YEARLY;BYEASTER=0,1')).toThrow(
+        /Invalid BYEASTER value: expected a single integer, got '0,1'/
+      )
+    })
+
+    it('accepts a valid BYEASTER offset', () => {
+      expect(parseString('FREQ=YEARLY;BYEASTER=-1')).toEqual({
+        freq: Frequency.YEARLY,
+        byeaster: -1,
+      })
+    })
   })
 })

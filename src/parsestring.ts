@@ -112,7 +112,7 @@ function parseRrule(line: string) {
         options.until = untilStringToDate(value)
         break
       case 'BYEASTER':
-        options.byeaster = Number(value)
+        options.byeaster = parseScalarNumber(key, value)
         break
       default:
         throw new Error("Unknown RRULE property '" + key + "'")
