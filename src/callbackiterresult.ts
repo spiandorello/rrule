@@ -1,4 +1,4 @@
-import IterResult, { IterArgs } from './iterresult'
+import IterResult, { IterArgs, RRuleIterationLimitError } from './iterresult'
 
 type Iterator = (d: Date, len: number) => boolean
 
@@ -12,14 +12,18 @@ export default class CallbackIterResult extends IterResult<'all' | 'between'> {
   constructor(
     method: 'all' | 'between',
     args: Partial<IterArgs>,
-    iterator: Iterator
+    iterator: Iterator,
+    maxIterations: number = IterResult.defaultMaxIterations
   ) {
-    super(method, args)
+    super(method, args, maxIterations)
 
     this.iterator = iterator
   }
 
   add(date: Date) {
+    if (this._result.length >= this.maxIterations) {
+      throw new RRuleIterationLimitError(this.maxIterations)
+    }
     if (this.iterator(date, this._result.length)) {
       this._result.push(date)
       return true

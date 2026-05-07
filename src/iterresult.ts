@@ -13,19 +13,47 @@ export interface IterArgs {
 }
 
 /**
+ * Thrown when an iteration produces more accepted dates than the
+ * configured cap. Used as a DoS backstop against infinite rules
+ * (no COUNT / UNTIL) reaching MAXYEAR.
+ */
+export class RRuleIterationLimitError extends Error {
+  public readonly limit: number
+
+  constructor(limit: number) {
+    super(
+      `RRule iteration limit (${limit}) exceeded. The rule may be infinite — ` +
+        'add COUNT or UNTIL, narrow the query window, or raise ' +
+        'IterResult.defaultMaxIterations.'
+    )
+    this.name = 'RRuleIterationLimitError'
+    this.limit = limit
+    Object.setPrototypeOf(this, RRuleIterationLimitError.prototype)
+  }
+}
+
+/**
  * This class helps us to emulate python's generators, sorta.
  */
 export default class IterResult<M extends QueryMethodTypes> {
+  public static defaultMaxIterations = 100_000
+
   public readonly method: M
   public readonly args: Partial<IterArgs>
   public readonly minDate: Date | null = null
   public readonly maxDate: Date | null = null
+  public readonly maxIterations: number
   public _result: Date[] = []
   public total = 0
 
-  constructor(method: M, args: Partial<IterArgs>) {
+  constructor(
+    method: M,
+    args: Partial<IterArgs>,
+    maxIterations: number = IterResult.defaultMaxIterations
+  ) {
     this.method = method
     this.args = args
+    this.maxIterations = maxIterations
 
     if (method === 'between') {
       this.maxDate = args.inc
@@ -72,6 +100,9 @@ export default class IterResult<M extends QueryMethodTypes> {
    * @return {Boolean} whether we are interested in more values.
    */
   add(date: Date) {
+    if (this._result.length >= this.maxIterations) {
+      throw new RRuleIterationLimitError(this.maxIterations)
+    }
     this._result.push(date)
     return true
   }
@@ -96,6 +127,6 @@ export default class IterResult<M extends QueryMethodTypes> {
   }
 
   clone() {
-    return new IterResult(this.method, this.args)
+    return new IterResult(this.method, this.args, this.maxIterations)
   }
 }
