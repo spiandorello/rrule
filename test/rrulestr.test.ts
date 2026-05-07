@@ -1,5 +1,12 @@
 import { parse, datetime, testRecurring, TEST_CTX } from './lib/utils'
-import { RRule, RRuleSet, rrulestr, Frequency } from '../src'
+import {
+  RRule,
+  RRuleSet,
+  rrulestr,
+  Frequency,
+  parseStringConfig,
+  RRuleStringTooLargeError,
+} from '../src'
 import { Days } from '../src/rrule'
 import { parseInput } from '../src/rrulestr'
 
@@ -371,6 +378,16 @@ describe('rrulestr', function () {
 })
 
 describe('splitIntoLines (unfold) hardening', () => {
+  // The perf-regression tests below use ~100 KB payloads that exceed the
+  // default 64 KiB cap. Raise the cap for the duration of this block.
+  const originalLimit = parseStringConfig.maxLength
+  beforeAll(() => {
+    parseStringConfig.maxLength = 1_000_000
+  })
+  afterAll(() => {
+    parseStringConfig.maxLength = originalLimit
+  })
+
   it('unfolds a property split across many continuation lines', () => {
     // 100 single-character continuations should reassemble into FREQ=YEARLY
     const head = 'F'
@@ -461,5 +478,57 @@ describe('parseInput', () => {
         },
       ],
     })
+  })
+})
+
+describe('input length cap', () => {
+  const originalLimit = parseStringConfig.maxLength
+
+  afterEach(() => {
+    parseStringConfig.maxLength = originalLimit
+  })
+
+  it('rrulestr throws RRuleStringTooLargeError when input exceeds the cap', () => {
+    parseStringConfig.maxLength = 100
+    const oversize = 'A'.repeat(200)
+    expect(() => rrulestr(oversize)).toThrow(RRuleStringTooLargeError)
+  })
+
+  it('error carries actualLength and limit', () => {
+    parseStringConfig.maxLength = 50
+    const input = 'B'.repeat(123)
+    try {
+      rrulestr(input)
+      fail('expected RRuleStringTooLargeError')
+    } catch (err) {
+      expect(err).toBeInstanceOf(RRuleStringTooLargeError)
+      expect((err as RRuleStringTooLargeError).actualLength).toBe(123)
+      expect((err as RRuleStringTooLargeError).limit).toBe(50)
+    }
+  })
+
+  it('RRule.fromString (parseString) also enforces the cap', () => {
+    parseStringConfig.maxLength = 100
+    const oversize = 'C'.repeat(200)
+    expect(() => RRule.fromString(oversize)).toThrow(RRuleStringTooLargeError)
+  })
+
+  it('payloads under the cap parse normally', () => {
+    parseStringConfig.maxLength = 1024
+    const rule = rrulestr(
+      'DTSTART:19970902T090000Z\nRRULE:FREQ=YEARLY;COUNT=3'
+    )
+    expect(rule).toBeDefined()
+  })
+
+  it('default cap (64 KiB) accepts realistic multi-line iCalendar payloads', () => {
+    // A 4 KiB payload should always be accepted under the default 64 KiB cap.
+    const rdates = new Array(150)
+      .fill(0)
+      .map((_, i) => `RDATE:1997090${(i % 9) + 1}T090000Z`)
+      .join('\n')
+    const payload = `DTSTART:19970902T090000Z\nRRULE:FREQ=YEARLY;COUNT=1\n${rdates}`
+    expect(payload.length).toBeLessThan(parseStringConfig.maxLength)
+    expect(() => rrulestr(payload, { forceset: true })).not.toThrow()
   })
 })

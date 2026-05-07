@@ -14,12 +14,12 @@ The list below is ordered by severity, then by exploitability. Checked items are
 
 - [x] **O(n²) RFC line unfolding.** `splitIntoLines(unfold=true)` mutated the array via `splice` inside a `while` loop; a payload of N continuation or blank lines was O(N²) (measured: N=100k took ~3.3s, N=200k took ~13.5s). **Fix:** rewrote as a single forward pass that builds the output array — N=100k now completes in ~5ms. Only the `unfold=true` path was affected. _src/rrulestr.ts; perf-regression tests in test/rrulestr.test.ts._
 - [ ] **Bracket-assignment in option parser.** Parsed key is lower-cased and assigned via `options[optionKey] = num` with `@ts-ignore`. Currently mitigated by an upstream switch-statement whitelist, but the pattern is a refactoring footgun for prototype pollution. _src/parsestring.ts:84._ **Plan:** drop `@ts-ignore`, narrow the assignment via a typed `Record<keyof Options, ...>` and reject unknown keys explicitly.
-- [ ] **`between()` is ~10× slower with TZID** (upstream issue [#580](https://github.com/jkbrzt/rrule/issues/580)). Per-request perf cliff for any TZID-aware query. **Plan:** profile and reduce per-iteration timezone conversions; cache where safe.
+- [x] **`between()` is ~10× slower with TZID** (upstream issue [#580](https://github.com/jkbrzt/rrule/issues/580); reproduced here at ~50× on Node 20). Each accepted candidate hit `dateInTimeZone`, which built three fresh `Intl.DateTimeFormat` instances (twice via `date.toLocaleString(...)`, once via `Intl.DateTimeFormat().resolvedOptions()`). **Fix:** cache one `Intl.DateTimeFormat` per timezone and memoise the local timezone. `.between()` over a 5-year DAILY rule went 374ms → 13ms; TZID is now ~2× UTC instead of ~50×. _src/dateutil.ts; perf-regression test in test/datewithzone.test.ts._
 
 ## LOW — defense in depth
 
 - [x] **No `bysetpos` array length cap.** Values are bounded `[-366, 366]` but `BYSETPOS=1,2,...,10000` was accepted. **Fix:** cap at 732 entries (the count of distinct legal positions: `-366..-1, 1..366`) and reject longer arrays before per-element validation runs. _src/parseoptions.ts; tests in test/parseoptions.test.ts._
-- [ ] **No top-level rrule string length cap.** A multi-MB string will be parsed before any structural validation. **Plan:** reject inputs > a few KB at the top of `rrulestr`.
+- [x] **No top-level rrule string length cap.** A multi-MB string was parsed before any structural validation. **Fix:** `parseString` and `parseInput` now reject inputs longer than `parseStringConfig.maxLength` (default 64 KiB, mutable) with a typed `RRuleStringTooLargeError` that carries `actualLength` and `limit`. Both are exported from the package root. _src/parsestring.ts, src/rrulestr.ts; tests in test/rrulestr.test.ts._
 
 ## Upstream backports aligned with this hardening theme
 
