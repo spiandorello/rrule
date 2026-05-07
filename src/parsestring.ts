@@ -3,7 +3,45 @@ import { Weekday } from './weekday'
 import { untilStringToDate } from './dateutil'
 import { Days } from './rrule'
 
+/**
+ * Thrown when an input string exceeds {@link parseStringConfig.maxLength}.
+ * Used as a DoS backstop against multi-MB payloads being parsed before
+ * any structural validation can run.
+ */
+export class RRuleStringTooLargeError extends Error {
+  public readonly limit: number
+  public readonly actualLength: number
+
+  constructor(actualLength: number, limit: number) {
+    super(
+      `RRule string length ${actualLength} exceeds limit ${limit}. ` +
+        'Reject oversized inputs at your application boundary, or raise ' +
+        'parseStringConfig.maxLength.'
+    )
+    this.name = 'RRuleStringTooLargeError'
+    this.actualLength = actualLength
+    this.limit = limit
+    Object.setPrototypeOf(this, RRuleStringTooLargeError.prototype)
+  }
+}
+
+/**
+ * Mutable configuration for input-length validation. Consumers can raise
+ * or lower {@link parseStringConfig.maxLength} to match the size of
+ * payloads they expect.
+ */
+export const parseStringConfig = {
+  /** Maximum accepted input length, in characters. Defaults to 64 KiB. */
+  maxLength: 65536,
+}
+
 export function parseString(rfcString: string): Partial<Options> {
+  if (rfcString.length > parseStringConfig.maxLength) {
+    throw new RRuleStringTooLargeError(
+      rfcString.length,
+      parseStringConfig.maxLength
+    )
+  }
   const options = rfcString
     .split('\n')
     .map(parseLine)

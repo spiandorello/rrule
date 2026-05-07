@@ -3,7 +3,12 @@ import { RRuleSet } from './rruleset'
 import { untilStringToDate } from './dateutil'
 import { includes, split } from './helpers'
 import { Options } from './types'
-import { parseString, parseDtstart } from './parsestring'
+import {
+  parseString,
+  parseDtstart,
+  parseStringConfig,
+  RRuleStringTooLargeError,
+} from './parsestring'
 
 export interface RRuleStrOptions {
   dtstart: Date | null
@@ -28,6 +33,10 @@ const DEFAULT_OPTIONS: RRuleStrOptions = {
 }
 
 export function parseInput(s: string, options: Partial<RRuleStrOptions>) {
+  if (s.length > parseStringConfig.maxLength) {
+    throw new RRuleStringTooLargeError(s.length, parseStringConfig.maxLength)
+  }
+
   const rrulevals: Partial<Options>[] = []
   let rdatevals: Date[] = []
   const exrulevals: Partial<Options>[] = []
