@@ -66,6 +66,15 @@ export function parseOptions(options: Partial<Options>) {
   if (isPresent(opts.bysetpos)) {
     if (isNumber(opts.bysetpos)) opts.bysetpos = [opts.bysetpos]
 
+    // Bounded by the value range: at most 732 distinct legal positions
+    // (-366..-1, 1..366). Reject anything longer to prevent unbounded
+    // arrays from untrusted input.
+    if (opts.bysetpos.length > 732) {
+      throw new Error(
+        `bysetpos must contain at most 732 entries (got ${opts.bysetpos.length})`
+      )
+    }
+
     for (let i = 0; i < opts.bysetpos.length; i++) {
       const v = opts.bysetpos[i]
       if (v === 0 || !(v >= -366 && v <= 366)) {

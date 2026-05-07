@@ -100,3 +100,30 @@ describe('interval', () => {
     ).toThrow(/Invalid interval/)
   })
 })
+
+describe('bysetpos length cap', () => {
+  it('accepts up to 732 entries (the value-range maximum)', () => {
+    const bysetpos: number[] = []
+    for (let v = -366; v <= 366; v++) if (v !== 0) bysetpos.push(v)
+    expect(bysetpos).toHaveLength(732)
+    expect(() =>
+      parseOptions({ freq: RRule.YEARLY, bysetpos, bymonthday: 1 })
+    ).not.toThrow()
+  })
+
+  it('rejects arrays longer than 732 entries', () => {
+    const bysetpos = new Array(733).fill(1)
+    expect(() =>
+      parseOptions({ freq: RRule.YEARLY, bysetpos, bymonthday: 1 })
+    ).toThrow(/bysetpos must contain at most 732 entries \(got 733\)/)
+  })
+
+  it('rejects very long arrays before per-element validation', () => {
+    const bysetpos = new Array(10_000).fill(1)
+    const start = Date.now()
+    expect(() =>
+      parseOptions({ freq: RRule.YEARLY, bysetpos, bymonthday: 1 })
+    ).toThrow(/at most 732 entries/)
+    expect(Date.now() - start).toBeLessThan(50)
+  })
+})
