@@ -18,7 +18,7 @@ The list below is ordered by severity, then by exploitability. Checked items are
 
 ## LOW — defense in depth
 
-- [ ] **No `bysetpos` array length cap.** Values are bounded `[-366, 366]` but `BYSETPOS=1,2,...,10000` is accepted. _src/parseoptions.ts:53-63._ **Plan:** cap at 366 (the value range bound).
+- [x] **No `bysetpos` array length cap.** Values are bounded `[-366, 366]` but `BYSETPOS=1,2,...,10000` was accepted. **Fix:** cap at 732 entries (the count of distinct legal positions: `-366..-1, 1..366`) and reject longer arrays before per-element validation runs. _src/parseoptions.ts; tests in test/parseoptions.test.ts._
 - [x] **No top-level rrule string length cap.** A multi-MB string was parsed before any structural validation. **Fix:** `parseString` and `parseInput` now reject inputs longer than `parseStringConfig.maxLength` (default 64 KiB, mutable) with a typed `RRuleStringTooLargeError` that carries `actualLength` and `limit`. Both are exported from the package root. _src/parsestring.ts, src/rrulestr.ts; tests in test/rrulestr.test.ts._
 
 ## Upstream backports aligned with this hardening theme
