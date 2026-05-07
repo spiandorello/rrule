@@ -7,7 +7,7 @@
 [![js-standard-style][js-standard-image]][js-standard-url]
 [![Downloads][downloads-image]][downloads-url]
 [![Gitter][gitter-image]][gitter-url]
-[![codecov.io](http://codecov.io/github/jkbrzt/rrule/coverage.svg?branch=master)](http://codecov.io/github/jkbrzt/rrule?branch=master)
+[![codecov.io](http://codecov.io/github/spiandorello/rrule/coverage.svg?branch=main)](http://codecov.io/github/spiandorello/rrule?branch=main)
 
 rrule.js supports recurrence rules as defined in the [iCalendar
 RFC](https://tools.ietf.org/html/rfc5545), with a few important
@@ -818,7 +818,7 @@ $ yarn build
 Python `dateutil` is written by [Gustavo
 Niemeyer](http://niemeyer.net).
 
-See [LICENCE](https://github.com/jkbrzt/rrule/blob/master/LICENCE) for
+See [LICENCE](https://github.com/spiandorello/rrule/blob/main/LICENCE) for
 more details.
 
 [npm-url]: https://npmjs.org/package/rrule

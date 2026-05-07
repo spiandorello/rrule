@@ -139,12 +139,18 @@ export class DateTime extends Time {
     this.fixDay()
   }
 
-  public addHours(hours: number, filtered: boolean, byhour: number[]) {
+  public addHours(
+    hours: number,
+    filtered: boolean,
+    byhour: number[],
+    until?: Date | null
+  ) {
     if (filtered) {
       // Jump to one iteration before next day
       this.hour += Math.floor((23 - this.hour) / hours) * hours
     }
 
+    let iterations = 0
     for (;;) {
       this.hour += hours
       const { div: dayDiv, mod: hourMod } = divmod(this.hour, 24)
@@ -154,6 +160,10 @@ export class DateTime extends Time {
       }
 
       if (empty(byhour) || includes(byhour, this.hour)) break
+      if (this.exceededTermination(until, ++iterations)) {
+        this.markExhausted()
+        break
+      }
     }
   }
 
@@ -161,7 +171,8 @@ export class DateTime extends Time {
     minutes: number,
     filtered: boolean,
     byhour: number[],
-    byminute: number[]
+    byminute: number[],
+    until?: Date | null
   ) {
     if (filtered) {
       // Jump to one iteration before next day
@@ -169,18 +180,23 @@ export class DateTime extends Time {
         Math.floor((1439 - (this.hour * 60 + this.minute)) / minutes) * minutes
     }
 
+    let iterations = 0
     for (;;) {
       this.minute += minutes
       const { div: hourDiv, mod: minuteMod } = divmod(this.minute, 60)
       if (hourDiv) {
         this.minute = minuteMod
-        this.addHours(hourDiv, false, byhour)
+        this.addHours(hourDiv, false, byhour, until)
       }
 
       if (
         (empty(byhour) || includes(byhour, this.hour)) &&
         (empty(byminute) || includes(byminute, this.minute))
       ) {
+        break
+      }
+      if (this.exceededTermination(until, ++iterations)) {
+        this.markExhausted()
         break
       }
     }
@@ -191,7 +207,8 @@ export class DateTime extends Time {
     filtered: boolean,
     byhour: number[],
     byminute: number[],
-    bysecond: number[]
+    bysecond: number[],
+    until?: Date | null
   ) {
     if (filtered) {
       // Jump to one iteration before next day
@@ -202,12 +219,13 @@ export class DateTime extends Time {
         ) * seconds
     }
 
+    let iterations = 0
     for (;;) {
       this.second += seconds
       const { div: minuteDiv, mod: secondMod } = divmod(this.second, 60)
       if (minuteDiv) {
         this.second = secondMod
-        this.addMinutes(minuteDiv, false, byhour, byminute)
+        this.addMinutes(minuteDiv, false, byhour, byminute, until)
       }
 
       if (
@@ -217,7 +235,32 @@ export class DateTime extends Time {
       ) {
         break
       }
+      if (this.exceededTermination(until, ++iterations)) {
+        this.markExhausted()
+        break
+      }
     }
+  }
+
+  // Prevents pathological inputs (e.g. byhour=[1] with even interval)
+  // from spinning the loop until MAXYEAR.
+  private static readonly MAX_ADD_ITERATIONS = 100000
+
+  private exceededTermination(
+    until: Date | null | undefined,
+    iterations: number
+  ): boolean {
+    if (this.year > MAXYEAR) return true
+    if (until && this.getTime() > until.getTime()) return true
+    if (iterations >= DateTime.MAX_ADD_ITERATIONS) return true
+    return false
+  }
+
+  // After the iteration cap fires, this DateTime no longer satisfies the
+  // BY* filters. Push it past MAXYEAR so the outer iterator's existing
+  // terminal check (iter/index.ts) fires and stops emitting candidates.
+  private markExhausted() {
+    this.year = MAXYEAR + 1
   }
 
   public fixDay() {
@@ -246,7 +289,7 @@ export class DateTime extends Time {
   }
 
   public add(options: ParsedOptions, filtered: boolean) {
-    const { freq, interval, wkst, byhour, byminute, bysecond } = options
+    const { freq, interval, wkst, byhour, byminute, bysecond, until } = options
 
     switch (freq) {
       case Frequency.YEARLY:
@@ -258,11 +301,18 @@ export class DateTime extends Time {
       case Frequency.DAILY:
         return this.addDaily(interval)
       case Frequency.HOURLY:
-        return this.addHours(interval, filtered, byhour)
+        return this.addHours(interval, filtered, byhour, until)
       case Frequency.MINUTELY:
-        return this.addMinutes(interval, filtered, byhour, byminute)
+        return this.addMinutes(interval, filtered, byhour, byminute, until)
       case Frequency.SECONDLY:
-        return this.addSeconds(interval, filtered, byhour, byminute, bysecond)
+        return this.addSeconds(
+          interval,
+          filtered,
+          byhour,
+          byminute,
+          bysecond,
+          until
+        )
     }
   }
 }

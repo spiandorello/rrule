@@ -33,7 +33,32 @@ describe('RRule', function () {
     expect(s1).toBe(s2)
   })
 
-  it('rrulestr itteration not infinite when interval 0', function () {
+  it('does not emit invalid occurrences when byhour parity makes the rule unsatisfiable', function () {
+    // FREQ=HOURLY;INTERVAL=2;BYHOUR=1 from an even-hour DTSTART has no
+    // legitimate occurrences. The DoS-hardening iteration cap must signal
+    // exhaustion to the iterator instead of letting it emit a candidate
+    // whose hour does not satisfy BYHOUR.
+    const rule = rrulestr(
+      'DTSTART:20240326T000000Z\nRRULE:FREQ=HOURLY;INTERVAL=2;BYHOUR=1;COUNT=1'
+    )
+    expect(rule.all()).toEqual([])
+  })
+
+  it('does not emit invalid occurrences when byminute parity makes the rule unsatisfiable', function () {
+    const rule = rrulestr(
+      'DTSTART:20240326T000000Z\nRRULE:FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1;COUNT=1'
+    )
+    expect(rule.all()).toEqual([])
+  })
+
+  it('does not emit invalid occurrences when bysecond parity makes the rule unsatisfiable', function () {
+    const rule = rrulestr(
+      'DTSTART:20240326T000000Z\nRRULE:FREQ=SECONDLY;INTERVAL=2;BYSECOND=1;COUNT=1'
+    )
+    expect(rule.all()).toEqual([])
+  })
+
+  it('rrulestr rejects INTERVAL=0 at parse time instead of looping', function () {
     ;[
       'FREQ=YEARLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
       'FREQ=MONTHLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
@@ -41,7 +66,7 @@ describe('RRule', function () {
       'FREQ=HOURLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
       'FREQ=MINUTELY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
       'FREQ=SECONDLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
-    ].map((s) => expect(rrulestr(s).count()).toBe(0))
+    ].forEach((s) => expect(() => rrulestr(s)).toThrow(/Invalid interval/))
   })
 
   it('does not mutate the passed-in options object', function () {
