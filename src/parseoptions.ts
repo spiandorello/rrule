@@ -40,6 +40,19 @@ export function parseOptions(options: Partial<Options>) {
     throw new Error(`Invalid frequency: ${opts.freq} ${options.freq}`)
   }
 
+  if (!isPresent(opts.interval)) {
+    opts.interval = 1
+  } else if (
+    !isNumber(opts.interval) ||
+    !Number.isFinite(opts.interval) ||
+    !Number.isInteger(opts.interval) ||
+    opts.interval < 1
+  ) {
+    throw new Error(
+      `Invalid interval: ${opts.interval}. Must be a positive integer.`
+    )
+  }
+
   if (!opts.dtstart) opts.dtstart = new Date(new Date().setMilliseconds(0))
 
   if (!isPresent(opts.wkst)) {

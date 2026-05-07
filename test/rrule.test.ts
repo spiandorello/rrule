@@ -33,7 +33,7 @@ describe('RRule', function () {
     expect(s1).toBe(s2)
   })
 
-  it('rrulestr itteration not infinite when interval 0', function () {
+  it('rrulestr rejects INTERVAL=0 at parse time instead of looping', function () {
     ;[
       'FREQ=YEARLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
       'FREQ=MONTHLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
@@ -41,7 +41,7 @@ describe('RRule', function () {
       'FREQ=HOURLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
       'FREQ=MINUTELY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
       'FREQ=SECONDLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
-    ].map((s) => expect(rrulestr(s).count()).toBe(0))
+    ].forEach((s) => expect(() => rrulestr(s)).toThrow(/Invalid interval/))
   })
 
   it('does not mutate the passed-in options object', function () {
