@@ -2,6 +2,7 @@ node_modules/
 bower_components/
 .idea
 .vscode
+.claude
 *.log
 coverage
 .nyc_output

@@ -253,9 +253,7 @@ let cachedLocalTimeZone: string | null = null
 let cachedLocalTimeZoneEnv: string | undefined = undefined
 const getLocalTimeZone = function () {
   const envTz =
-    typeof process !== 'undefined' && process.env
-      ? process.env.TZ
-      : undefined
+    typeof process !== 'undefined' && process.env ? process.env.TZ : undefined
   if (cachedLocalTimeZone === null || envTz !== cachedLocalTimeZoneEnv) {
     cachedLocalTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
     cachedLocalTimeZoneEnv = envTz

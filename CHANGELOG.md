@@ -1,5 +1,39 @@
 ### Changelog
 
+- 2.9.0 (2026-05-12)
+
+  - Features:
+    - Typed Recurrence API on top of `RRule`:
+      - `Recurrence`, `RecurrenceFrequency`, `RecurrenceWeekday`,
+        `RecurrenceEnd`, `TypedRecurrenceOptions` types.
+      - `recurrenceToRRule()`, `recurrenceToRRuleString()`,
+        `rruleStringToRecurrence()` for round-trip conversion.
+      - `parseYmdToUtcEndOfDay()`, `formatUtcDateToYmd()` date helpers.
+    - `UNTIL` defaults to inclusive-day semantics so events scheduled later
+      in the day on the boundary date are no longer skipped. Opt out with
+      `{ untilMode: 'instant' }`.
+    - `INTERVAL=1` is omitted from serialized output.
+    - Strict parser rejects RRULE features the typed surface can't represent
+      (`FREQ=HOURLY/MINUTELY/SECONDLY`, `BYSETPOS`, `BYHOUR`, `WKST`,
+      `BYDAY` with nth offset, multi-value `BYMONTH`/`BYMONTHDAY`) with
+      descriptive errors instead of silent data loss.
+  - Internal:
+    - No breaking changes to `RRule`, `RRuleSet`, `rrulestr`, or any existing
+      export.
+
+- 2.8.1 (2026-01-15)
+
+  - Hardened fork rebrand to `@spiandorello/rrulejs`.
+  - Security and performance fixes:
+    - DoS-resistant `parseString` with `parseStringConfig.maxLength` cap and
+      `RRuleStringTooLargeError`.
+    - Iteration cap with `RRuleIterationLimitError` to prevent OOM on
+      pathological rules.
+    - `bysetpos` array length capped.
+    - `Intl.DateTimeFormat` cached per timezone for ~50× faster TZID
+      iteration.
+    - Stricter integer validation across parser (including BYEASTER).
+
 - 2.8.0 (2023-11-10)
 
   - Bugfixes:
