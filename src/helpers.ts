@@ -15,7 +15,8 @@ export const isNumber = function (value: unknown): value is number {
 }
 
 export const isWeekdayStr = function (value: unknown): value is WeekdayStr {
-  return typeof value === 'string' && ALL_WEEKDAYS.includes(value as WeekdayStr)
+  if (typeof value !== 'string') return false
+  return (ALL_WEEKDAYS as readonly string[]).includes(value)
 }
 
 export const isArray = Array.isArray
