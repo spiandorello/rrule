@@ -21,9 +21,23 @@
     "Lars Schöning",
     "David Golightly"
   ],
+  "type": "commonjs",
   "main": "dist/es5/rrule.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/es5/rrule.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/spiandorello/rrule.git"
@@ -37,7 +51,7 @@
   "scripts": {
     "prebuild": "yarn clean",
     "prepublishOnly": "yarn build",
-    "build": "yarn lint && yarn format-check && tsc -b tsconfig.build.json && webpack",
+    "build": "yarn lint && yarn format-check && tsc -b tsconfig.build.json && webpack && node scripts/fix-esm-extensions.mjs",
     "clean": "rm -rf dist/",
     "lint": "yarn eslint .",
     "lint:fix": "yarn eslint . --fix",
