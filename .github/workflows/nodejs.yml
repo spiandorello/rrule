@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm install -g codecov nyc
+      - run: npm install -g nyc
       - run: yarn install
       - run: yarn build
       - run: LANG=en_CA TZ=America/Vancouver yarn test
@@ -19,13 +19,8 @@ jobs:
       - run: LANG=sw_KE TZ=Africa/Nairobi yarn test
       - run: LANG=en_KI TZ=Pacific/Kiritimati yarn test
       - run: LANG=jp_JP TZ=Asia/Tokyo yarn test-ci
-      - name: Upload coverage to Codecov (when token is configured)
-        env:
-          CODECOV_REPO_TOKEN: ${{ secrets.CODECOV_REPO_TOKEN }}
-        run: |
-          nyc report --reporter=json
-          if [ -n "$CODECOV_REPO_TOKEN" ]; then
-            codecov -t "$CODECOV_REPO_TOKEN" -f coverage/*.json
-          else
-            echo "CODECOV_REPO_TOKEN not configured for this repo; skipping upload."
-          fi
+      - run: nyc report --reporter=json
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
