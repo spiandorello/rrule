@@ -7,27 +7,30 @@ import { QueryMethodTypes, IterResultType } from './types'
 import { rrulestr } from './rrulestr'
 import { optionsToString } from './optionstostring'
 
-function createGetterSetter<T>(fieldName: string) {
-  return (field?: T) => {
+function createGetterSetter<T>(
+  fieldName: string
+): (this: RRuleSet, field?: T) => T | undefined {
+  return function (this: RRuleSet, field?: T): T | undefined {
+    const key = `_${fieldName}`
+    const store = this as unknown as Record<string, T | undefined>
     if (field !== undefined) {
-      // @ts-expect-error TS2683 — strict pass: pending refactor
-      this[`_${fieldName}`] = field
+      store[key] = field
     }
 
-    // @ts-expect-error TS2683 — strict pass: pending refactor
-    if (this[`_${fieldName}`] !== undefined) {
-      // @ts-expect-error TS2683 — strict pass: pending refactor
-      return this[`_${fieldName}`]
+    if (store[key] !== undefined) {
+      return store[key]
     }
 
-    // @ts-expect-error TS2683 — strict pass: pending refactor
     for (let i = 0; i < this._rrule.length; i++) {
-      // @ts-expect-error TS2683 — strict pass: pending refactor
-      const field: T = this._rrule[i].origOptions[fieldName]
-      if (field) {
-        return field
+      const origField = (
+        this._rrule[i].origOptions as unknown as Record<string, T | undefined>
+      )[fieldName]
+      if (origField) {
+        return origField
       }
     }
+
+    return undefined
   }
 }
 
@@ -55,8 +58,8 @@ export class RRuleSet extends RRule {
     this._exdate = []
   }
 
-  dtstart = createGetterSetter.apply(this, ['dtstart'])
-  tzid = createGetterSetter.apply(this, ['tzid'])
+  dtstart = createGetterSetter<Date | null | undefined>('dtstart')
+  tzid = createGetterSetter<string>('tzid')
 
   _iter<M extends QueryMethodTypes>(
     iterResult: IterResult<M>

@@ -10,24 +10,24 @@ export const TEST_CTX = {
 }
 
 const assertDatesEqual = function (
-  actual: Date | Date[],
-  expected: Date | Date[]
+  actual: Date | Array<Date | null> | null,
+  expected: Date | Array<Date | null> | null
 ) {
-  if (!(actual instanceof Array)) actual = [actual]
-  if (!(expected instanceof Array)) expected = [expected]
+  const actualArr = actual instanceof Array ? actual : [actual]
+  const expectedArr = expected instanceof Array ? expected : [expected]
 
-  if (expected.length > 1) {
-    expect(actual).toHaveLength(expected.length)
+  if (expectedArr.length > 1) {
+    expect(actualArr).toHaveLength(expectedArr.length)
   }
 
-  for (let i = 0; i < expected.length; i++) {
-    const act = actual[i]
-    const exp = expected[i]
+  for (let i = 0; i < expectedArr.length; i++) {
+    const act = actualArr[i] as Date
+    const exp = expectedArr[i]
     expect(exp instanceof Date ? exp.toString() : exp).toBe(act.toString())
   }
 }
 
-const extractTime = function (date: Date) {
+const extractTime = function (date: Date | null) {
   return date != null ? date.getTime() : void 0
 }
 
@@ -36,7 +36,9 @@ const extractTime = function (date: Date) {
  */
 export const parse = function (str: string) {
   const parts = str.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/)
-  // @ts-expect-error TS2488 — strict pass: pending refactor
+  if (!parts) {
+    throw new Error(`Cannot parse date string: ${str}`)
+  }
   const [, y, m, d, h, i, s] = parts
   const year = Number(y)
   const month = Number(m[0] === '0' ? m[1] : m)
@@ -103,7 +105,7 @@ export const testRecurring = function (
     let time = Date.now()
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    let actualDates = rule[method](...args)
+    let actualDates: Date | Array<Date | null> | null = rule[method](...args)
     time = Date.now() - time
 
     // Wall-clock guard against DoS-mitigation regressions in iterators.
@@ -113,18 +115,15 @@ export const testRecurring = function (
     const maxTestDuration = 1000
     expect(time).toBeLessThan(maxTestDuration)
 
-    // @ts-expect-error TS2322 — strict pass: pending refactor
     if (!(actualDates instanceof Array)) actualDates = [actualDates]
     if (!(expectedDates instanceof Array)) expectedDates = [expectedDates]
 
-    // @ts-expect-error TS2345 — strict pass: pending refactor
     assertDatesEqual(actualDates, expectedDates)
 
     // Additional tests using the expected dates
     // ==========================================================
 
     if (TEST_CTX.ALSO_TESTSUBSECOND_PRECISION) {
-      // @ts-expect-error TS18047/TS2339 — strict pass: pending refactor
       expect(actualDates.map(extractTime)).toEqual(
         expectedDates.map(extractTime)
       )
@@ -198,15 +197,11 @@ export const testRecurring = function (
           prev = expectedDates[i - 1]
 
           // Test after() and before() with inc=true.
-          // @ts-expect-error TS2345 — strict pass: pending refactor
           assertDatesEqual(rule.after(date, true), date)
-          // @ts-expect-error TS2345 — strict pass: pending refactor
           assertDatesEqual(rule.before(date, true), date)
 
           // Test after() and before() with inc=false.
-          // @ts-expect-error TS2345 — strict pass: pending refactor
           next && assertDatesEqual(rule.after(date, false), next)
-          // @ts-expect-error TS2345 — strict pass: pending refactor
           prev && assertDatesEqual(rule.before(date, false), prev)
         }
       }
@@ -215,12 +210,11 @@ export const testRecurring = function (
 } as TestRecurring
 
 testRecurring.only = function (...args) {
-  // @ts-expect-error TS2322 — strict pass: pending refactor
-  testRecurring.apply(it, [...args, it.only])
+  ;(testRecurring as (...a: unknown[]) => void).apply(it, [...args, it.only])
 }
 
-// @ts-expect-error TS2322 — strict pass: pending refactor
-testRecurring.skip = function ([description]: [string]) {
+testRecurring.skip = function (...args: unknown[]) {
+  const [description] = args as [string]
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   it.skip(description, () => {})
 }
