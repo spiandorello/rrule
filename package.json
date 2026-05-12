@@ -1,6 +1,6 @@
 {
   "name": "@spiandorello/rrulejs",
-  "version": "2.9.0",
+  "version": "3.0.0",
   "description": "Hardened fork of rrule — JavaScript library for working with recurrence rules for calendar dates. DoS-resistant parser, iteration guards, and a typed Recurrence API with inclusive-day UNTIL semantics.",
   "homepage": "https://github.com/spiandorello/rrule#readme",
   "license": "BSD-3-Clause",
