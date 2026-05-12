@@ -106,6 +106,18 @@
   },
   "resolutions": {
     "@babel/traverse": "^7.23.2",
-    "minimist": "^1.2.6"
+    "minimist": "^1.2.6",
+    "braces": "^3.0.3",
+    "cross-spawn": "^7.0.5",
+    "flatted": "^3.4.2",
+    "json5": "^2.2.2",
+    "eslint-plugin-import/tsconfig-paths/json5": "^1.0.2",
+    "kind-of": "^6.0.3",
+    "minimatch": "^3.1.4",
+    "picomatch": "^2.3.2",
+    "semver": "^7.5.2",
+    "serialize-javascript": "^7.0.3",
+    "terser": "^5.14.2",
+    "yaml": "^2.2.2"
   }
 }
