@@ -34,6 +34,7 @@ export class DateWithZone {
       return this.date
     }
 
+    // @ts-expect-error TS2345 — strict pass: pending refactor
     return dateInTimeZone(this.date, this.tzid)
   }
 }

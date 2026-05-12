@@ -43,6 +43,7 @@ export function iterSet<M extends QueryMethodTypes>(
   }
 
   if (iterResult.method === 'between') {
+    // @ts-expect-error TS2345 — strict pass: pending refactor
     evalExdate(iterResult.args.after, iterResult.args.before)
     iterResult.accept = function (date) {
       const dt = Number(date)

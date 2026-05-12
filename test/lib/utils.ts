@@ -36,6 +36,7 @@ const extractTime = function (date: Date) {
  */
 export const parse = function (str: string) {
   const parts = str.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/)
+  // @ts-expect-error TS2488 — strict pass: pending refactor
   const [, y, m, d, h, i, s] = parts
   const year = Number(y)
   const month = Number(m[0] === '0' ? m[1] : m)
@@ -112,15 +113,18 @@ export const testRecurring = function (
     const maxTestDuration = 1000
     expect(time).toBeLessThan(maxTestDuration)
 
+    // @ts-expect-error TS2322 — strict pass: pending refactor
     if (!(actualDates instanceof Array)) actualDates = [actualDates]
     if (!(expectedDates instanceof Array)) expectedDates = [expectedDates]
 
+    // @ts-expect-error TS2345 — strict pass: pending refactor
     assertDatesEqual(actualDates, expectedDates)
 
     // Additional tests using the expected dates
     // ==========================================================
 
     if (TEST_CTX.ALSO_TESTSUBSECOND_PRECISION) {
+      // @ts-expect-error TS18047/TS2339 — strict pass: pending refactor
       expect(actualDates.map(extractTime)).toEqual(
         expectedDates.map(extractTime)
       )
@@ -194,11 +198,15 @@ export const testRecurring = function (
           prev = expectedDates[i - 1]
 
           // Test after() and before() with inc=true.
+          // @ts-expect-error TS2345 — strict pass: pending refactor
           assertDatesEqual(rule.after(date, true), date)
+          // @ts-expect-error TS2345 — strict pass: pending refactor
           assertDatesEqual(rule.before(date, true), date)
 
           // Test after() and before() with inc=false.
+          // @ts-expect-error TS2345 — strict pass: pending refactor
           next && assertDatesEqual(rule.after(date, false), next)
+          // @ts-expect-error TS2345 — strict pass: pending refactor
           prev && assertDatesEqual(rule.before(date, false), prev)
         }
       }
@@ -207,9 +215,11 @@ export const testRecurring = function (
 } as TestRecurring
 
 testRecurring.only = function (...args) {
+  // @ts-expect-error TS2322 — strict pass: pending refactor
   testRecurring.apply(it, [...args, it.only])
 }
 
+// @ts-expect-error TS2322 — strict pass: pending refactor
 testRecurring.skip = function ([description]: [string]) {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   it.skip(description, () => {})

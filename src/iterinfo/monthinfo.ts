@@ -49,8 +49,10 @@ export function rebuildMonth(
     const first = rang[0]
     const last = rang[1] - 1
 
+    // @ts-expect-error TS18047 — strict pass: pending refactor
     for (let k = 0; k < options.bynweekday.length; k++) {
       let i
+      // @ts-expect-error TS18047 — strict pass: pending refactor
       const [wday, n] = options.bynweekday[k]
       if (n < 0) {
         i = last + (n + 1) * 7

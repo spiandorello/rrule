@@ -63,6 +63,7 @@ describe('NLP', () => {
     texts.forEach(function (item) {
       const text = item[0]
       const str = item[1]
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       expect(optionsToString(RRule.parseText(text))).toBe(str)
     })
   })

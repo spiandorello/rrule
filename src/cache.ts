@@ -44,6 +44,7 @@ export class Cache {
     if (what === 'all') {
       this.all = value as Date[]
     } else {
+      // @ts-expect-error TS18048 — strict pass: pending refactor
       args._value = value
       this[what].push(args as IterArgs)
     }
@@ -65,6 +66,7 @@ export class Cache {
     const findCacheDiff = function (item: IterArgs) {
       for (let i = 0; i < argsKeys.length; i++) {
         const key = argsKeys[i]
+        // @ts-expect-error TS18048 — strict pass: pending refactor
         if (!argsMatch(args[key], item[key])) {
           return true
         }
@@ -89,6 +91,7 @@ export class Cache {
     if (!cached && this.all) {
       // Not in the cache, but we already know all the occurrences,
       // so we can find the correct dates from the cached ones.
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       const iterResult = new IterResult(what, args)
       for (let i = 0; i < (this.all as Date[]).length; i++) {
         if (!iterResult.accept((this.all as Date[])[i])) break

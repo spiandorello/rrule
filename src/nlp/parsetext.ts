@@ -9,8 +9,11 @@ import { WeekdayStr } from '../weekday'
 
 class Parser {
   private readonly rules: { [k: string]: RegExp }
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   public text: string
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   public symbol: string | null
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   public value: RegExpExecArray | null
   private done = true
 
@@ -62,8 +65,10 @@ class Parser {
         this.value = null
         return
       }
+      // @ts-expect-error TS2454 — strict pass: pending refactor
     } while (bestSymbol === 'SKIP')
 
+    // @ts-expect-error TS2454 — strict pass: pending refactor
     this.symbol = bestSymbol
     this.value = best
     return true
@@ -390,6 +395,7 @@ export default function parseText(text: string, language: Language = ENGLISH) {
         ttr.nextSymbol()
         return ttr.accept('last') ? -3 : 3
       case 'nth':
+        // @ts-expect-error TS18047 — strict pass: pending refactor
         const v = parseInt(ttr.value[1], 10)
         if (v < -366 || v > 366) throw new Error('Nth out of range: ' + v)
 
@@ -431,6 +437,7 @@ export default function parseText(text: string, language: Language = ENGLISH) {
       if (!date) throw new Error('Cannot parse until date:' + ttr.text)
       options.until = new Date(date)
     } else if (ttr.accept('for')) {
+      // @ts-expect-error TS18047 — strict pass: pending refactor
       options.count = parseInt(ttr.value[0], 10)
       ttr.expect('number')
       // ttr.expect('times')

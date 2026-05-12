@@ -48,6 +48,7 @@ export default class ToText {
   private language: Language
   private options: Partial<Options>
   private origOptions: Partial<Options>
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   private bymonthday: Options['bymonthday'] | null
   private byweekday: {
     allWeeks: ByWeekday[] | null
@@ -71,7 +72,9 @@ export default class ToText {
     this.origOptions = rrule.origOptions
 
     if (this.origOptions.bymonthday) {
+      // @ts-expect-error TS2769 — strict pass: pending refactor
       const bymonthday = ([] as number[]).concat(this.options.bymonthday)
+      // @ts-expect-error TS2769 — strict pass: pending refactor
       const bynmonthday = ([] as number[]).concat(this.options.bynmonthday)
 
       bymonthday.sort((a, b) => a - b)
@@ -88,9 +91,11 @@ export default class ToText {
       const days = String(byweekday)
 
       this.byweekday = {
+        // @ts-expect-error TS2769 — strict pass: pending refactor
         allWeeks: byweekday.filter(function (weekday: Weekday) {
           return !weekday.n
         }),
+        // @ts-expect-error TS2769 — strict pass: pending refactor
         someWeeks: byweekday.filter(function (weekday: Weekday) {
           return Boolean(weekday.n)
         }),
@@ -116,10 +121,14 @@ export default class ToText {
         return a.weekday - b.weekday
       }
 
+      // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
       this.byweekday.allWeeks.sort(sortWeekDays)
+      // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
       this.byweekday.someWeeks.sort(sortWeekDays)
 
+      // @ts-expect-error TS2531 — strict pass: pending refactor
       if (!this.byweekday.allWeeks.length) this.byweekday.allWeeks = null
+      // @ts-expect-error TS2531 — strict pass: pending refactor
       if (!this.byweekday.someWeeks.length) this.byweekday.someWeeks = null
     } else {
       this.byweekday = null
@@ -160,6 +169,7 @@ export default class ToText {
   toString() {
     const gettext = this.gettext
 
+    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (!(this.options.freq in ToText.IMPLEMENTED)) {
       return gettext('RRule error: Unable to fully convert this rrule to text')
     }
@@ -195,9 +205,11 @@ export default class ToText {
   HOURLY() {
     const gettext = this.gettext
 
+    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (this.options.interval !== 1) this.add(this.options.interval.toString())
 
     this.add(
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.plural(this.options.interval) ? gettext('hours') : gettext('hour')
     )
   }
@@ -205,9 +217,11 @@ export default class ToText {
   MINUTELY() {
     const gettext = this.gettext
 
+    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (this.options.interval !== 1) this.add(this.options.interval.toString())
 
     this.add(
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.plural(this.options.interval)
         ? gettext('minutes')
         : gettext('minute')
@@ -217,16 +231,19 @@ export default class ToText {
   DAILY() {
     const gettext = this.gettext
 
+    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (this.options.interval !== 1) this.add(this.options.interval.toString())
 
     if (this.byweekday && this.byweekday.isWeekdays) {
       this.add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval)
           ? gettext('weekdays')
           : gettext('weekday')
       )
     } else {
       this.add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('days') : gettext('day')
       )
     }
@@ -249,7 +266,9 @@ export default class ToText {
     const gettext = this.gettext
 
     if (this.options.interval !== 1) {
+      // @ts-expect-error TS2532 — strict pass: pending refactor
       this.add(this.options.interval.toString()).add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('weeks') : gettext('week')
       )
     }
@@ -266,6 +285,7 @@ export default class ToText {
       }
     } else if (this.byweekday && this.byweekday.isEveryDay) {
       this.add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('days') : gettext('day')
       )
     } else {
@@ -293,7 +313,9 @@ export default class ToText {
 
     if (this.origOptions.bymonth) {
       if (this.options.interval !== 1) {
+        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString()).add(gettext('months'))
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         if (this.plural(this.options.interval)) this.add(gettext('in'))
       } else {
         // this.add(gettext('MONTH'))
@@ -301,9 +323,11 @@ export default class ToText {
       this._bymonth()
     } else {
       if (this.options.interval !== 1) {
+        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString())
       }
       this.add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval)
           ? gettext('months')
           : gettext('month')
@@ -323,6 +347,7 @@ export default class ToText {
 
     if (this.origOptions.bymonth) {
       if (this.options.interval !== 1) {
+        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString())
         this.add(gettext('years'))
       } else {
@@ -331,9 +356,11 @@ export default class ToText {
       this._bymonth()
     } else {
       if (this.options.interval !== 1) {
+        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString())
       }
       this.add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('years') : gettext('year')
       )
     }
@@ -346,6 +373,7 @@ export default class ToText {
 
     if (this.options.byyearday) {
       this.add(gettext('on the'))
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         .add(this.list(this.options.byyearday, this.nth, gettext('and')))
         .add(gettext('day'))
     }
@@ -366,12 +394,15 @@ export default class ToText {
     if (this.byweekday && this.byweekday.allWeeks) {
       this.add(gettext('on'))
         .add(
+          // @ts-expect-error TS2345 — strict pass: pending refactor
           this.list(this.byweekday.allWeeks, this.weekdaytext, gettext('or'))
         )
         .add(gettext('the'))
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         .add(this.list(this.bymonthday, this.nth, gettext('or')))
     } else {
       this.add(gettext('on the')).add(
+        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.list(this.bymonthday, this.nth, gettext('and'))
       )
     }
@@ -380,16 +411,21 @@ export default class ToText {
 
   private _byweekday() {
     const gettext = this.gettext
+    // @ts-expect-error TS2531 — strict pass: pending refactor
     if (this.byweekday.allWeeks && !this.byweekday.isWeekdays) {
       this.add(gettext('on')).add(
+        // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
         this.list(this.byweekday.allWeeks, this.weekdaytext)
       )
     }
 
+    // @ts-expect-error TS2531 — strict pass: pending refactor
     if (this.byweekday.someWeeks) {
+      // @ts-expect-error TS2531 — strict pass: pending refactor
       if (this.byweekday.allWeeks) this.add(gettext('and'))
 
       this.add(gettext('on the')).add(
+        // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
         this.list(this.byweekday.someWeeks, this.weekdaytext, gettext('and'))
       )
     }
@@ -399,12 +435,14 @@ export default class ToText {
     const gettext = this.gettext
 
     this.add(gettext('at')).add(
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.list(this.origOptions.byhour, undefined, gettext('and'))
     )
   }
 
   private _bymonth() {
     this.add(
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.list(this.options.bymonth, this.monthtext, this.gettext('and'))
     )
   }
@@ -445,6 +483,7 @@ export default class ToText {
   weekdaytext(wday: Weekday | number) {
     const weekday = isNumber(wday) ? (wday + 1) % 7 : wday.getJsWeekday()
     return (
+      // @ts-expect-error TS2345 — strict pass: pending refactor
       ((wday as Weekday).n ? this.nth((wday as Weekday).n) + ' ' : '') +
       this.language.dayNames[weekday]
     )

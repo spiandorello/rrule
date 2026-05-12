@@ -14,8 +14,11 @@ export type GetDayset = () => DaySet
 // =============================================================================
 
 export default class Iterinfo {
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   public yearinfo: YearInfo
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   public monthinfo: MonthInfo
+  // @ts-expect-error TS2564 — strict pass: pending refactor
   public eastermask: number[] | null
 
   constructor(private options: ParsedOptions) {}
@@ -152,14 +155,19 @@ export default class Iterinfo {
   getdayset(freq: Frequency): (y: number, m: number, d: number) => DaySet {
     switch (freq) {
       case Frequency.YEARLY:
+        // @ts-expect-error TS2322 — strict pass: pending refactor
         return this.ydayset.bind(this)
       case Frequency.MONTHLY:
+        // @ts-expect-error TS2322 — strict pass: pending refactor
         return this.mdayset.bind(this)
       case Frequency.WEEKLY:
+        // @ts-expect-error TS2322 — strict pass: pending refactor
         return this.wdayset.bind(this)
       case Frequency.DAILY:
+        // @ts-expect-error TS2322 — strict pass: pending refactor
         return this.ddayset.bind(this)
       default:
+        // @ts-expect-error TS2322 — strict pass: pending refactor
         return this.ddayset.bind(this)
     }
   }

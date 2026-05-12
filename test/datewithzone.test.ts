@@ -25,6 +25,7 @@ it('returns the time of the date', () => {
 })
 
 it('rejects invalid dates', () => {
+  // @ts-expect-error TS2769 — strict pass: pending refactor
   expect(() => new DateWithZone(new Date(undefined))).toThrow(
     'Invalid date passed to DateWithZone'
   )
