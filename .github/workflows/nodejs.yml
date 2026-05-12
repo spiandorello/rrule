@@ -90,7 +90,7 @@ jobs:
       - name: Show tarball contents
         run: npm pack --dry-run
       - name: Validate package.json against npm spec
-        run: npx --yes publint
+        run: npx --yes publint --pack npm
       - name: Validate published types
         run: npx --yes @arethetypeswrong/cli --pack .
 
