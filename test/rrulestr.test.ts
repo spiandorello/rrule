@@ -515,9 +515,7 @@ describe('input length cap', () => {
 
   it('payloads under the cap parse normally', () => {
     parseStringConfig.maxLength = 1024
-    const rule = rrulestr(
-      'DTSTART:19970902T090000Z\nRRULE:FREQ=YEARLY;COUNT=3'
-    )
+    const rule = rrulestr('DTSTART:19970902T090000Z\nRRULE:FREQ=YEARLY;COUNT=3')
     expect(rule).toBeDefined()
   })
 

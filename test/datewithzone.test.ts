@@ -85,9 +85,7 @@ describe('rezonedDate honors process.env.TZ changes', () => {
     for (let i = 0; i < 5; i++) {
       new DateWithZone(d, 'America/New_York').rezonedDate()
     }
-    const noArgCalls = dtf.mock.calls.filter(
-      (args) => args.length === 0
-    ).length
+    const noArgCalls = dtf.mock.calls.filter((args) => args.length === 0).length
     expect(noArgCalls).toBe(0)
   })
 })

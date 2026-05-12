@@ -255,6 +255,118 @@ new RRule({
 }).all()[('2018-02-01T10:30:00.000Z', '2018-03-01T10:30:00.000Z')]
 ```
 
+---
+
+### Typed Recurrence API
+
+This fork ships a typed, RFC-aware companion to `RRule` aimed at API and
+frontend code. `Recurrence` exchanges numeric enums and `Weekday` instances
+for plain string literals, treats `UNTIL` as an inclusive calendar day by
+default, and round-trips cleanly to and from an RFC 5545 `RRULE:` string.
+
+```ts
+import {
+  Recurrence,
+  recurrenceToRRule,
+  recurrenceToRRuleString,
+  rruleStringToRecurrence,
+  parseYmdToUtcEndOfDay,
+  formatUtcDateToYmd,
+} from '@spiandorello/rrulejs'
+```
+
+#### Build an RRULE string
+
+```ts
+const recurrence: Recurrence = {
+  frequency: 'WEEKLY',
+  interval: 1,
+  byWeekday: ['TU', 'TH'],
+  end: { type: 'until', until: '2026-12-31' },
+}
+
+const dtstart = new Date('2026-05-12T18:00:00-03:00')
+
+recurrenceToRRuleString(recurrence, dtstart)
+// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z'
+```
+
+`INTERVAL=1` is omitted from the output, and the default `UNTIL` mode
+(`inclusive-day`) anchors the end to 23:59:59 on the dtstart's local day —
+so an event scheduled later in the day on `2026-12-31` is still included.
+
+#### Build a fully serialized rule (with DTSTART)
+
+```ts
+recurrenceToRRuleString(recurrence, dtstart, { includeDtstart: true })
+// → 'DTSTART:20260512T210000Z\nRRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z'
+```
+
+#### Treat UNTIL as a UTC instant instead of a calendar day
+
+```ts
+recurrenceToRRuleString(recurrence, dtstart, { untilMode: 'instant' })
+// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T000000Z'
+```
+
+#### Use COUNT or no end at all
+
+```ts
+recurrenceToRRuleString(
+  {
+    frequency: 'WEEKLY',
+    byWeekday: ['MO', 'WE', 'FR'],
+    end: { type: 'count', count: 10 },
+  },
+  dtstart
+)
+// → 'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10'
+
+recurrenceToRRuleString({ frequency: 'DAILY', end: { type: 'never' } }, dtstart)
+// → 'RRULE:FREQ=DAILY'
+```
+
+#### Parse an RRULE string back to `Recurrence`
+
+```ts
+rruleStringToRecurrence('RRULE:FREQ=WEEKLY;BYDAY=TU,TH;COUNT=10')
+// → {
+//     frequency: 'WEEKLY',
+//     byWeekday: ['TU', 'TH'],
+//     end: { type: 'count', count: 10 },
+//   }
+```
+
+Unsupported features (`FREQ=HOURLY/MINUTELY/SECONDLY`, `BYSETPOS`, `BYHOUR`,
+`WKST`, `BYDAY` with an nth prefix such as `-1MO`, multi-value `BYMONTH` or
+`BYMONTHDAY`) throw a descriptive error rather than silently dropping data.
+
+#### Hand off to the existing `RRule` API
+
+```ts
+const rule = recurrenceToRRule(recurrence, dtstart)
+rule.all() // Date[]
+rule.between(start, end)
+```
+
+#### Date helpers
+
+```ts
+parseYmdToUtcEndOfDay('2026-12-31')
+// → 2026-12-31T23:59:59.000Z
+
+formatUtcDateToYmd(new Date('2026-05-12T10:00:00Z'))
+// → '2026-05-12'
+```
+
+#### Options summary
+
+| Option           | Default           | Effect                                                       |
+| ---------------- | ----------------- | ------------------------------------------------------------ |
+| `includeDtstart` | `false`           | When `true`, prepends `DTSTART:...` to the serialized output |
+| `untilMode`      | `'inclusive-day'` | Convert `until` to end-of-day in dtstart's local TZ          |
+| `untilMode`      | `'instant'`       | Convert `until` to midnight UTC                              |
+
 ### API
 
 #### `RRule` Constructor

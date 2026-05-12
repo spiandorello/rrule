@@ -34,7 +34,10 @@ describe('IterResult iteration cap', () => {
         dtstart: new Date(Date.UTC(2024, 0, 1)),
       })
       expect(() =>
-        rule.between(new Date(Date.UTC(2024, 0, 1)), new Date(Date.UTC(2025, 0, 1)))
+        rule.between(
+          new Date(Date.UTC(2024, 0, 1)),
+          new Date(Date.UTC(2025, 0, 1))
+        )
       ).toThrow(RRuleIterationLimitError)
     })
 

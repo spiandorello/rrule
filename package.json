@@ -1,23 +1,38 @@
 {
-  "name": "rrule",
-  "version": "2.8.0",
-  "description": "JavaScript library for working with recurrence rules for calendar dates.",
-  "homepage": "http://jakubroztocil.github.io/rrule/",
+  "name": "@spiandorello/rrulejs",
+  "version": "2.9.0",
+  "description": "Hardened fork of rrule — JavaScript library for working with recurrence rules for calendar dates. DoS-resistant parser, iteration guards, and a typed Recurrence API with inclusive-day UNTIL semantics.",
+  "homepage": "https://github.com/spiandorello/rrule#readme",
   "license": "BSD-3-Clause",
   "keywords": [
     "dates",
     "recurrences",
     "calendar",
     "icalendar",
-    "rfc"
+    "rfc",
+    "rfc5545",
+    "rrule",
+    "typescript",
+    "typed"
   ],
-  "author": "Jakub Roztocil, Lars Schöning, and David Golightly",
+  "author": "Eduardo da Veiga Spiandorello <eduardo.spiandorello@gmail.com>",
+  "contributors": [
+    "Jakub Roztocil",
+    "Lars Schöning",
+    "David Golightly"
+  ],
   "main": "dist/es5/rrule.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git://github.com/jakubroztocil/rrule.git"
+    "url": "git+https://github.com/spiandorello/rrule.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spiandorello/rrule/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "prebuild": "yarn clean",
