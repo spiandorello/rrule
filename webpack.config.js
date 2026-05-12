@@ -1,6 +1,7 @@
 const path = require('path')
 const TerserPlugin = require('terser-webpack-plugin')
 const UnminifiedWebpackPlugin = require('unminified-webpack-plugin')
+const { codecovWebpackPlugin } = require('@codecov/webpack-plugin')
 
 const paths = {
   source: path.resolve(__dirname, 'src'),
@@ -36,7 +37,14 @@ const commonConfig = {
     minimize: true,
     minimizer: [new TerserPlugin()],
   },
-  plugins: [new UnminifiedWebpackPlugin()],
+  plugins: [
+    new UnminifiedWebpackPlugin(),
+    codecovWebpackPlugin({
+      enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,
+      bundleName: '@spiandorello/rrulejs',
+      uploadToken: process.env.CODECOV_TOKEN,
+    }),
+  ],
 }
 
 const rruleConfig = Object.assign(
