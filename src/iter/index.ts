@@ -37,7 +37,6 @@ export function iter<M extends QueryMethodTypes>(
     const filtered = removeFilteredDays(dayset, start, end, ii, options)
 
     if (notEmpty(bysetpos)) {
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       const poslist = buildPoslist(bysetpos, timeset, start, end, ii, dayset)
 
       for (let j = 0; j < poslist.length; j++) {
@@ -68,9 +67,7 @@ export function iter<M extends QueryMethodTypes>(
         }
 
         const date = fromOrdinal(ii.yearordinal + currentDay)
-        // @ts-expect-error TS18047 — strict pass: pending refactor
         for (let k = 0; k < timeset.length; k++) {
-          // @ts-expect-error TS18047 — strict pass: pending refactor
           const time = timeset[k]
           const res = combine(date, time)
           if (until && res > until) {
@@ -134,8 +131,8 @@ function isFiltered(
 
   return (
     (notEmpty(bymonth) && !includes(bymonth, ii.mmask[currentDay])) ||
-    // @ts-expect-error TS18047 — strict pass: pending refactor
-    (notEmpty(byweekno) && !ii.wnomask[currentDay]) ||
+    // wnomask is non-null whenever byweekno is set (see rebuildYear).
+    (notEmpty(byweekno) && isPresent(ii.wnomask) && !ii.wnomask[currentDay]) ||
     (notEmpty(byweekday) && !includes(byweekday, ii.wdaymask[currentDay])) ||
     (notEmpty(ii.nwdaymask) && !ii.nwdaymask[currentDay]) ||
     (byeaster !== null && !includes(ii.eastermask, currentDay)) ||
@@ -170,11 +167,10 @@ function removeFilteredDays(
   let filtered = false
   for (let dayCounter = start; dayCounter < end; dayCounter++) {
     const currentDay = dayset[dayCounter]
+    if (currentDay === null) continue
 
-    // @ts-expect-error TS2345 — strict pass: pending refactor
     filtered = isFiltered(ii, currentDay, options)
 
-    // @ts-expect-error TS2538 — strict pass: pending refactor
     if (filtered) dayset[currentDay] = null
   }
 
@@ -185,7 +181,7 @@ function makeTimeset(
   ii: Iterinfo,
   counterDate: DateTime,
   options: ParsedOptions
-): Time[] | null {
+): Time[] {
   const { freq, byhour, byminute, bysecond } = options
 
   if (freqIsDailyOrGreater(freq)) {

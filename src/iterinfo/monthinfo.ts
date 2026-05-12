@@ -1,6 +1,6 @@
 import { ParsedOptions } from '../types'
 import { RRule } from '../rrule'
-import { empty, repeat, pymod } from '../helpers'
+import { empty, notEmpty, repeat, pymod } from '../helpers'
 
 export interface MonthInfo {
   lastyear: number
@@ -40,6 +40,12 @@ export function rebuildMonth(
     return result
   }
 
+  // Callers gate rebuildMonth on notEmpty(options.bynweekday); the early
+  // return narrows the type for the loop below.
+  if (!notEmpty(options.bynweekday)) {
+    return result
+  }
+
   // Weekly frequency won't get here, so we may not
   // care about cross-year weekly periods.
   result.nwdaymask = repeat(0, yearlen) as number[]
@@ -49,10 +55,8 @@ export function rebuildMonth(
     const first = rang[0]
     const last = rang[1] - 1
 
-    // @ts-expect-error TS18047 — strict pass: pending refactor
     for (let k = 0; k < options.bynweekday.length; k++) {
       let i
-      // @ts-expect-error TS18047 — strict pass: pending refactor
       const [wday, n] = options.bynweekday[k]
       if (n < 0) {
         i = last + (n + 1) * 7
