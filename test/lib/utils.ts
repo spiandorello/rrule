@@ -105,7 +105,11 @@ export const testRecurring = function (
     let actualDates = rule[method](...args)
     time = Date.now() - time
 
-    const maxTestDuration = 200
+    // Wall-clock guard against DoS-mitigation regressions in iterators.
+    // Worst-case observed in CI is ~300ms (BYWEEKNO=53;BYDAY=MO scans many
+    // years). 1000ms tolerates loaded runners while still catching the kind
+    // of unbounded-loop regression this guard is meant to detect.
+    const maxTestDuration = 1000
     expect(time).toBeLessThan(maxTestDuration)
 
     if (!(actualDates instanceof Array)) actualDates = [actualDates]
