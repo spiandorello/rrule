@@ -18,7 +18,6 @@ export default class Iterinfo {
   public monthinfo: MonthInfo
   public eastermask: number[] | null
 
-  // eslint-disable-next-line no-empty-function
   constructor(private options: ParsedOptions) {}
 
   rebuild(year: number, month: number) {
