@@ -44,7 +44,7 @@ export class Cache {
     if (what === 'all') {
       this.all = value as Date[]
     } else {
-      // @ts-expect-error TS18048 — strict pass: pending refactor
+      if (!args) return
       args._value = value
       this[what].push(args as IterArgs)
     }
@@ -63,11 +63,13 @@ export class Cache {
   ): Date | Date[] | false | null {
     let cached: Date | Date[] | false | null = false
     const argsKeys = args ? (Object.keys(args) as (keyof IterArgs)[]) : []
+    // Capture a non-undefined alias so the closure body type-narrows; when
+    // `args` is undefined `argsKeys` is empty and the loop is skipped anyway.
+    const cmpArgs: Partial<IterArgs> = args ?? {}
     const findCacheDiff = function (item: IterArgs) {
       for (let i = 0; i < argsKeys.length; i++) {
         const key = argsKeys[i]
-        // @ts-expect-error TS18048 — strict pass: pending refactor
-        if (!argsMatch(args[key], item[key])) {
+        if (!argsMatch(cmpArgs[key], item[key])) {
           return true
         }
       }
@@ -91,8 +93,7 @@ export class Cache {
     if (!cached && this.all) {
       // Not in the cache, but we already know all the occurrences,
       // so we can find the correct dates from the cached ones.
-      // @ts-expect-error TS2345 — strict pass: pending refactor
-      const iterResult = new IterResult(what, args)
+      const iterResult = new IterResult(what, args ?? {})
       for (let i = 0; i < (this.all as Date[]).length; i++) {
         if (!iterResult.accept((this.all as Date[])[i])) break
       }
