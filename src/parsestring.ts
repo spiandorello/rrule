@@ -162,7 +162,9 @@ function parseRrule(line: string) {
 
 function parseScalarNumber(key: string, value: string): number {
   if (value.indexOf(',') !== -1) {
-    throw new Error(`Invalid ${key} value: expected a single integer, got '${value}'`)
+    throw new Error(
+      `Invalid ${key} value: expected a single integer, got '${value}'`
+    )
   }
   return parseIndividualNumber(key, value)
 }
