@@ -4,10 +4,9 @@
 
 [![NPM version][npm-image]][npm-url]
 [![Build Status][ci-image]][ci-url]
-[![js-standard-style][js-standard-image]][js-standard-url]
 [![Downloads][downloads-image]][downloads-url]
-[![Gitter][gitter-image]][gitter-url]
-[![codecov.io](http://codecov.io/github/spiandorello/rrule/coverage.svg?branch=main)](http://codecov.io/github/spiandorello/rrule?branch=main)
+[![codecov][codecov-image]][codecov-url]
+[![License][license-image]][license-url]
 
 rrule.js supports recurrence rules as defined in the [iCalendar
 RFC](https://tools.ietf.org/html/rfc5545), with a few important
@@ -933,16 +932,16 @@ Niemeyer](http://niemeyer.net).
 See [LICENCE](https://github.com/spiandorello/rrule/blob/main/LICENCE) for
 more details.
 
-[npm-url]: https://npmjs.org/package/rrule
-[npm-image]: http://img.shields.io/npm/v/rrule.svg
-[ci-url]: https://github.com/jkbrzt/rrule/actions
-[ci-image]: https://github.com/jkbrzt/rrule/workflows/Node%20CI/badge.svg
-[downloads-url]: https://npmjs.org/package/rrule
-[downloads-image]: http://img.shields.io/npm/dm/rrule.svg?style=flat-square
-[js-standard-url]: https://github.com/feross/standard
-[js-standard-image]: https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat
-[gitter-url]: https://gitter.im/rrule-js/Lobby
-[gitter-image]: https://img.shields.io/gitter/room/nwjs/nw.js.svg
+[npm-url]: https://www.npmjs.com/package/@spiandorello/rrulejs
+[npm-image]: https://img.shields.io/npm/v/@spiandorello/rrulejs.svg
+[ci-url]: https://github.com/spiandorello/rrule/actions/workflows/nodejs.yml
+[ci-image]: https://github.com/spiandorello/rrule/actions/workflows/nodejs.yml/badge.svg?branch=main
+[downloads-url]: https://www.npmjs.com/package/@spiandorello/rrulejs
+[downloads-image]: https://img.shields.io/npm/dm/@spiandorello/rrulejs.svg
+[codecov-url]: https://codecov.io/gh/spiandorello/rrule
+[codecov-image]: https://codecov.io/gh/spiandorello/rrule/branch/main/graph/badge.svg
+[license-url]: https://github.com/spiandorello/rrule/blob/main/LICENCE
+[license-image]: https://img.shields.io/npm/l/@spiandorello/rrulejs.svg
 
 #### Related projects
 
