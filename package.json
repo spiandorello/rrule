@@ -72,7 +72,6 @@
     "@types/node": "^17.0.41",
     "@typescript-eslint/eslint-plugin": "^5.27.1",
     "@typescript-eslint/parser": "^5.27.1",
-    "coverage": "^0.4.1",
     "eslint": "^8.17.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",
@@ -92,7 +91,7 @@
     "ts-node": "^10.8.1",
     "typescript": "^4.7.3",
     "unminified-webpack-plugin": "^3.0.0",
-    "webpack": "^5.73.0",
+    "webpack": "^5.94.0",
     "webpack-cli": "^4.9.2"
   },
   "files": [
@@ -102,5 +101,9 @@
   "peerDependencies": {},
   "dependencies": {
     "tslib": "^2.4.0"
+  },
+  "resolutions": {
+    "@babel/traverse": "^7.23.2",
+    "minimist": "^1.2.6"
   }
 }
