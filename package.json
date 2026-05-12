@@ -66,6 +66,7 @@
     ]
   },
   "devDependencies": {
+    "@codecov/webpack-plugin": "^2.0.1",
     "@types/assert": "^1.4.3",
     "@types/jest": "^29.5.8",
     "@types/mockdate": "^3.0.0",
