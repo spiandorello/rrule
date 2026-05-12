@@ -9,20 +9,8 @@ import {
   rrulestr,
   rruleStringToRecurrence,
 } from '../src'
-
-const ORIGINAL_TZ = process.env.TZ
-
-beforeAll(() => {
-  process.env.TZ = 'America/Sao_Paulo'
-})
-
-afterAll(() => {
-  if (ORIGINAL_TZ === undefined) {
-    delete process.env.TZ
-  } else {
-    process.env.TZ = ORIGINAL_TZ
-  }
-})
+import { timeToUntilString } from '../src/dateutil'
+import { ymdEndOfDayLocal } from '../src/typedRecurrence/helpers'
 
 describe('parseYmdToUtcEndOfDay', () => {
   it('returns UTC end of day for a valid YMD', () => {
@@ -78,8 +66,11 @@ describe('recurrenceToRRuleString', () => {
       byWeekday: ['TU', 'TH'],
       end: { type: 'until', until: '2026-12-31' },
     }
+    const expectedUntil = timeToUntilString(
+      ymdEndOfDayLocal('2026-12-31').valueOf()
+    )
     expect(recurrenceToRRuleString(recurrence, dtstart)).toBe(
-      'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z'
+      `RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=${expectedUntil}`
     )
   })
 
