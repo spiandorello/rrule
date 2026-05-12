@@ -1,0 +1,93 @@
+{
+  "rrule-hardening": {
+    "type": "domain",
+    "enforcement": "suggest",
+    "priority": "high",
+    "promptTriggers": {
+      "keywords": [
+        "rrule",
+        "recurrence",
+        "rfc 5545",
+        "icalendar",
+        "bysetpos",
+        "byweekday",
+        "byday",
+        "tzid",
+        "rrulestr",
+        "parsestring",
+        "parseoptions",
+        "iterresult",
+        "rruleset",
+        "typed recurrence",
+        "dos",
+        "iteration limit",
+        "hardening",
+        "max_add_iterations",
+        "rrulestringtoolargeerror",
+        "rruleiterationlimiterror"
+      ],
+      "intentPatterns": [
+        "(parse|iterate|generate|build|add|modify|fix|change).{0,40}(rrule|recurrence|rfc|ical|tzid|bysetpos|byweekday|byday|until|interval)",
+        "(dos|denial.{0,10}service|oom|hang|infinite.{0,10}loop).{0,40}(rrule|parser|iterator|cap|guard)",
+        "typed.{0,10}recurrence"
+      ]
+    }
+  },
+  "create-pr": {
+    "type": "domain",
+    "enforcement": "suggest",
+    "priority": "medium",
+    "promptTriggers": {
+      "keywords": [
+        "create pr",
+        "open pr",
+        "pull request",
+        "pr description",
+        "pr title",
+        "draft pr"
+      ],
+      "intentPatterns": [
+        "(create|open|draft|write|fix|edit).{0,20}(pr|pull request)",
+        "pull request.{0,20}(title|description|body|template)"
+      ]
+    }
+  },
+  "create-skill-or-rule": {
+    "type": "domain",
+    "enforcement": "suggest",
+    "priority": "low",
+    "promptTriggers": {
+      "keywords": [
+        "create skill",
+        "create rule",
+        "add rule",
+        "write skill",
+        "claude.md",
+        "coding standard",
+        "where should i put"
+      ],
+      "intentPatterns": [
+        "(create|write|add|capture).{0,20}(skill|rule)",
+        "(skill|rule|claude\\.md).{0,30}(or|vs|versus)"
+      ]
+    }
+  },
+  "linear-ticket-reviewer": {
+    "type": "domain",
+    "enforcement": "suggest",
+    "priority": "high",
+    "promptTriggers": {
+      "keywords": [
+        "linear",
+        "linear ticket",
+        "linear issue",
+        "ticket description",
+        "linear.app"
+      ],
+      "intentPatterns": [
+        "(review|improve|update|fix|fill).{0,20}(linear|ticket|issue)",
+        "linear\\.app/"
+      ]
+    }
+  }
+}

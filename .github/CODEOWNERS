@@ -1,0 +1,18 @@
+# CODEOWNERS for @spiandorello/rrulejs
+#
+# Routes PR reviews. The DoS-hardening surface (parser, iterator guards,
+# datetime, timezone handling) is owned explicitly so changes always get a
+# security-aware reviewer. See SECURITY.md for the threat model.
+
+# Default owner for everything in the repo
+*                       @spiandorello
+
+# Security-hardened surface (parser + iteration + datetime + TZ)
+src/parsestring.ts      @spiandorello
+src/parseoptions.ts     @spiandorello
+src/iterresult.ts       @spiandorello
+src/datetime.ts         @spiandorello
+src/datewithzone.ts     @spiandorello
+src/dateutil.ts         @spiandorello
+src/rrulestr.ts         @spiandorello
+SECURITY.md             @spiandorello
