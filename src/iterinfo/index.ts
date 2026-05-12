@@ -14,12 +14,11 @@ export type GetDayset = () => DaySet
 // =============================================================================
 
 export default class Iterinfo {
-  // @ts-expect-error TS2564 — strict pass: pending refactor
-  public yearinfo: YearInfo
-  // @ts-expect-error TS2564 — strict pass: pending refactor
-  public monthinfo: MonthInfo
-  // @ts-expect-error TS2564 — strict pass: pending refactor
-  public eastermask: number[] | null
+  // Populated by rebuild() before any getter is called. Definite-assignment
+  // documents the post-init invariant.
+  public yearinfo!: YearInfo
+  public monthinfo!: MonthInfo
+  public eastermask!: number[] | null
 
   constructor(private options: ParsedOptions) {}
 
@@ -98,21 +97,22 @@ export default class Iterinfo {
     return this.yearinfo.nmdaymask
   }
 
-  ydayset() {
-    return [range(this.yearlen), 0, this.yearlen]
+  ydayset(): DaySet {
+    const set: (number | null)[] = range(this.yearlen)
+    return [set, 0, this.yearlen]
   }
 
-  mdayset(_: unknown, month: number) {
+  mdayset(_: unknown, month: number): DaySet {
     const start = this.mrange[month - 1]
     const end = this.mrange[month]
-    const set = repeat<number | null>(null, this.yearlen)
+    const set = repeat(null, this.yearlen) as (number | null)[]
     for (let i = start; i < end; i++) set[i] = i
     return [set, start, end]
   }
 
-  wdayset(year: number, month: number, day: number) {
+  wdayset(year: number, month: number, day: number): DaySet {
     // We need to handle cross-year weeks here.
-    const set = repeat<number | null>(null, this.yearlen + 7)
+    const set = repeat(null, this.yearlen + 7) as (number | null)[]
     let i = toOrdinal(datetime(year, month, day)) - this.yearordinal
     const start = i
     for (let j = 0; j < 7; j++) {
@@ -123,7 +123,7 @@ export default class Iterinfo {
     return [set, start, i]
   }
 
-  ddayset(year: number, month: number, day: number) {
+  ddayset(year: number, month: number, day: number): DaySet {
     const set = repeat(null, this.yearlen) as (number | null)[]
     const i = toOrdinal(datetime(year, month, day)) - this.yearordinal
     set[i] = i
@@ -155,20 +155,15 @@ export default class Iterinfo {
   getdayset(freq: Frequency): (y: number, m: number, d: number) => DaySet {
     switch (freq) {
       case Frequency.YEARLY:
-        // @ts-expect-error TS2322 — strict pass: pending refactor
-        return this.ydayset.bind(this)
+        return () => this.ydayset()
       case Frequency.MONTHLY:
-        // @ts-expect-error TS2322 — strict pass: pending refactor
-        return this.mdayset.bind(this)
+        return (_y, m) => this.mdayset(_y, m)
       case Frequency.WEEKLY:
-        // @ts-expect-error TS2322 — strict pass: pending refactor
-        return this.wdayset.bind(this)
+        return (y, m, d) => this.wdayset(y, m, d)
       case Frequency.DAILY:
-        // @ts-expect-error TS2322 — strict pass: pending refactor
-        return this.ddayset.bind(this)
+        return (y, m, d) => this.ddayset(y, m, d)
       default:
-        // @ts-expect-error TS2322 — strict pass: pending refactor
-        return this.ddayset.bind(this)
+        return (y, m, d) => this.ddayset(y, m, d)
     }
   }
 
