@@ -61,6 +61,27 @@ jobs:
           path: dist/
           retention-days: 7
 
+  pack-check:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - run: yarn install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Show tarball contents
+        run: npm pack --dry-run
+      - name: Validate package.json against npm spec
+        run: npx --yes publint
+      - name: Validate published types
+        run: npx --yes @arethetypeswrong/cli --pack .
+
   test:
     runs-on: ubuntu-latest
     strategy:
