@@ -92,11 +92,7 @@ jobs:
       - name: Validate package.json against npm spec
         run: npx --yes publint --pack npm
       - name: Validate published types
-        # named-exports is suppressed because it's tracked in #33 (ESM
-        # consumers falling back to CJS via missing pkg.exports map).
-        # The fix is breaking (major bump) so it lives in its own PR.
-        # Remove this flag when #33 lands as part of the acceptance check.
-        run: npx --yes @arethetypeswrong/cli --pack . --ignore-rules named-exports
+        run: npx --yes @arethetypeswrong/cli --pack .
 
   test:
     runs-on: ubuntu-latest
