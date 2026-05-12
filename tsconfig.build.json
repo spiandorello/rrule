@@ -12,6 +12,7 @@
     "target": "es5",
     "importHelpers": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "rootDirs": ["./src/"]
   },
   "include": ["./src/**/*"],
