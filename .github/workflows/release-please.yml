@@ -14,7 +14,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           # RELEASE_PLEASE_TOKEN: optional PAT (contents+pull-requests scope).
           # When set, the tag created by merging the Release PR triggers
