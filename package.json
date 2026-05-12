@@ -36,10 +36,11 @@
   },
   "scripts": {
     "prebuild": "yarn clean",
-    "prepublish": "yarn build",
+    "prepublishOnly": "yarn build",
     "build": "yarn lint && yarn format-check && tsc -b tsconfig.build.json && webpack",
     "clean": "rm -rf dist/",
-    "lint": "yarn eslint . --fix",
+    "lint": "yarn eslint .",
+    "lint:fix": "yarn eslint . --fix",
     "format": "yarn prettier --write .",
     "format-check": "yarn prettier --check .",
     "test": "jest **/*.test.ts",
@@ -47,7 +48,7 @@
   },
   "lint-staged": {
     "*.ts": [
-      "yarn lint",
+      "yarn lint:fix",
       "yarn format"
     ]
   },
