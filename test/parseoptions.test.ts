@@ -54,7 +54,7 @@ describe('interval', () => {
   it('defaults to 1 when null', () => {
     const options = parseOptions({
       freq: RRule.DAILY,
-      interval: null as unknown as number,
+      interval: null,
     })
     expect(options.parsedOptions.interval).toBe(1)
   })

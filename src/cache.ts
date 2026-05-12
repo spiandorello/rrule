@@ -93,14 +93,14 @@ export class Cache {
       for (let i = 0; i < (this.all as Date[]).length; i++) {
         if (!iterResult.accept((this.all as Date[])[i])) break
       }
-      cached = iterResult.getValue() as Date
+      cached = iterResult.getValue()
       this._cacheAdd(what, cached, args)
     }
 
     return isArray(cached)
       ? cloneDates(cached)
       : cached instanceof Date
-      ? clone(cached)
-      : cached
+        ? clone(cached)
+        : cached
   }
 }

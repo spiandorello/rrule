@@ -207,7 +207,7 @@ testRecurring.only = function (...args) {
 }
 
 testRecurring.skip = function ([description]: [string]) {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function, no-empty-function
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   it.skip(description, () => {})
 }
 
