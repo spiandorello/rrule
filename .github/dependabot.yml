@@ -1,0 +1,46 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      jest:
+        patterns:
+          - 'jest'
+          - 'jest-*'
+          - '@types/jest'
+          - 'ts-jest'
+      eslint:
+        patterns:
+          - 'eslint'
+          - 'eslint-*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - 'globals'
+      webpack:
+        patterns:
+          - 'webpack'
+          - 'webpack-*'
+          - '*-webpack-plugin'
+          - 'ts-loader'
+          - 'source-map-loader'
+      prettier:
+        patterns:
+          - 'prettier'
+      types:
+        patterns:
+          - '@types/*'
+    ignore:
+      # @types/node intentionally pinned at ^17 — bump only via dedicated PR.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
