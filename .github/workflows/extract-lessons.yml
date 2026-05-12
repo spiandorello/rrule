@@ -1,0 +1,140 @@
+name: Extract Lessons
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+jobs:
+  extract-lessons:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check lessons file exists
+        id: check
+        run: |
+          if [ ! -f ".claude/lessons.md" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "No .claude/lessons.md found — skipping extraction."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Filter trivial PRs
+        if: steps.check.outputs.skip == 'false'
+        id: filter
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Skip chore/docs/style/release/revert PRs
+          if echo "$PR_TITLE" | grep -qiE '^(chore|docs|style|release|revert)\b'; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping trivial PR: $PR_TITLE"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get PR diff
+        if: steps.check.outputs.skip == 'false' && steps.filter.outputs.skip == 'false'
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch diff, truncate to 400 lines
+          gh pr diff ${{ github.event.pull_request.number }} | head -n 400 > /tmp/pr_diff.txt
+          DIFF_LINES=$(wc -l < /tmp/pr_diff.txt)
+          echo "diff_lines=$DIFF_LINES" >> $GITHUB_OUTPUT
+
+          # Skip if diff is too small to contain lessons
+          if [ "$DIFF_LINES" -lt 20 ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Diff too small ($DIFF_LINES lines) — skipping extraction."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract lessons via Claude API
+        if: steps.check.outputs.skip == 'false' && steps.filter.outputs.skip == 'false' && steps.diff.outputs.skip == 'false'
+        id: extract
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          PR_DIFF=$(cat /tmp/pr_diff.txt)
+
+          # Read the prompt template and substitute variables
+          PROMPT_TEMPLATE=$(cat .claude/extract-lessons-prompt.md)
+
+          # Build the prompt by substituting placeholders
+          PROMPT=$(echo "$PROMPT_TEMPLATE" \
+            | sed "s|{PR_TITLE}|$PR_TITLE|g" \
+            | sed "s|{PR_BODY}|${PR_BODY:-No description provided}|g" \
+            | sed "s|{PR_DIFF}|$PR_DIFF|g")
+
+          # Call Claude API (haiku — fast and cheap for summarization)
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg model "claude-haiku-4-5-20251001" \
+              --arg prompt "$PROMPT" \
+              '{
+                model: $model,
+                max_tokens: 1024,
+                messages: [{ role: "user", content: $prompt }]
+              }'
+            )")
+
+          # Extract the text content from the response
+          CONTENT=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
+
+          if [ -z "$CONTENT" ]; then
+            echo "API call failed or returned empty response — skipping."
+            echo "has_lessons=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if echo "$CONTENT" | grep -q "^NO_LESSONS"; then
+            echo "No lessons found in this PR."
+            echo "has_lessons=false" >> $GITHUB_OUTPUT
+          else
+            # Strip the LESSONS_FOUND marker and save
+            echo "$CONTENT" | sed '/^LESSONS_FOUND/d' > /tmp/new_lessons.txt
+            echo "has_lessons=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Append lessons to lessons.md
+        if: steps.extract.outputs.has_lessons == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Append a dated entry to lessons.md
+          DATE=$(date +%Y-%m-%d)
+          {
+            echo ""
+            echo "<!-- PR #$PR_NUMBER: $PR_TITLE ($DATE) -->"
+            cat /tmp/new_lessons.txt
+          } >> .claude/lessons.md
+
+      - name: Commit updated lessons.md
+        if: steps.extract.outputs.has_lessons == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .claude/lessons.md
+          git commit -m "chore: extract lessons from PR #$PR_NUMBER [skip ci]"
+          git push

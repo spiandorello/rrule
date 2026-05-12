@@ -1,0 +1,99 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(test:*)",
+      "Bash(yarn install:*)",
+      "Bash(yarn test:*)",
+      "Bash(yarn lint:*)",
+      "Bash(yarn format:*)",
+      "Bash(yarn format-check:*)",
+      "Bash(yarn build:*)",
+      "Bash(yarn clean:*)",
+      "Bash(yarn run-ts:*)",
+      "Bash(yarn test-ci:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx jest:*)",
+      "Bash(jest:*)",
+      "Bash(tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh pr *)",
+      "Bash(gh run:*)",
+      "Skill(create-pr)",
+      "mcp__linear-server__get_issue",
+      "mcp__linear-server__list_issues",
+      "mcp__linear-server__get_project",
+      "mcp__linear-server__list_documents",
+      "mcp__github__get_pull_request",
+      "mcp__github__list_pull_requests",
+      "mcp__github__create_pull_request",
+      "mcp__github__list_issues",
+      "mcp__github__get_issue",
+      "mcp__github__list_workflow_runs",
+      "mcp__github__get_workflow_run",
+      "Bash(grep -r *)",
+      "Bash(git * branch -a)",
+      "Bash(find*)",
+      "Write(*claude/scaffolder-cache*)",
+      "Bash(mkdir -p *claude/scaffolder-cache)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(sudo*)",
+      "Write(.env*)",
+      "Write(*.pem)",
+      "Write(*.key)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/pre-commit.js" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/pre-push.js" }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/skill-activation-prompt.js" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/skill-activation-prompt.js" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "command", "command": "cd /Users/eduardo.spiandorello/Documents/@isaac/rrule && yarn format" }]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "cd /Users/eduardo.spiandorello/Documents/@isaac/rrule && yarn tsc -b tsconfig.build.json && yarn lint 2>&1 | head -50" }
+        ]
+      }
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["linear-server", "github"],
+  "enabledPlugins": {}
+}

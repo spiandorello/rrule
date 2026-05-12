@@ -15,6 +15,9 @@
     "typescript",
     "typed"
   ],
+  "engines": {
+    "node": ">=14"
+  },
   "author": "Eduardo da Veiga Spiandorello <eduardo.spiandorello@gmail.com>",
   "contributors": [
     "Jakub Roztocil",
