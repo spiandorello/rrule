@@ -4,6 +4,11 @@ import { QueryMethodTypes, IterResultType } from './types'
 // Results
 // =============================================================================
 
+/**
+ * Permissive cache/wire shape — used by `Cache` where we genuinely store
+ * heterogeneous arg bags keyed by method (and a piggy-backed `_value`).
+ * Per-method call-sites should prefer the narrow `NarrowIterArgs<M>` below.
+ */
 export interface IterArgs {
   inc: boolean
   before: Date
@@ -11,6 +16,18 @@ export interface IterArgs {
   dt: Date
   _value: Date | Date[] | null
 }
+
+/**
+ * Discriminated-by-method narrow args used by `IterResult` and its consumers
+ * (e.g. `iterset`). Each branch only carries the fields its method needs.
+ */
+export type NarrowIterArgs<M extends QueryMethodTypes> = M extends 'all'
+  ? Record<string, never>
+  : M extends 'between'
+    ? { after: Date; before: Date; inc: boolean }
+    : M extends 'before' | 'after'
+      ? { dt: Date; inc: boolean }
+      : never
 
 /**
  * Thrown when an iteration produces more accepted dates than the
@@ -56,19 +73,15 @@ export default class IterResult<M extends QueryMethodTypes> {
     this.maxIterations = maxIterations
 
     if (method === 'between') {
-      // @ts-expect-error TS2322 — strict pass: pending refactor
-      this.maxDate = args.inc
-        ? args.before
-        : // @ts-expect-error TS18048 — strict pass: pending refactor
-          new Date(args.before.getTime() - 1)
-      // @ts-expect-error TS18048/TS2322 — strict pass: pending refactor
-      this.minDate = args.inc ? args.after : new Date(args.after.getTime() + 1)
+      const a = args as NarrowIterArgs<'between'>
+      this.maxDate = a.inc ? a.before : new Date(a.before.getTime() - 1)
+      this.minDate = a.inc ? a.after : new Date(a.after.getTime() + 1)
     } else if (method === 'before') {
-      // @ts-expect-error TS18048/TS2322 — strict pass: pending refactor
-      this.maxDate = args.inc ? args.dt : new Date(args.dt.getTime() - 1)
+      const a = args as NarrowIterArgs<'before'>
+      this.maxDate = a.inc ? a.dt : new Date(a.dt.getTime() - 1)
     } else if (method === 'after') {
-      // @ts-expect-error TS18048/TS2322 — strict pass: pending refactor
-      this.minDate = args.inc ? args.dt : new Date(args.dt.getTime() + 1)
+      const a = args as NarrowIterArgs<'after'>
+      this.minDate = a.inc ? a.dt : new Date(a.dt.getTime() + 1)
     }
   }
 

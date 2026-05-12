@@ -1,4 +1,4 @@
-import IterResult from './iterresult'
+import IterResult, { NarrowIterArgs } from './iterresult'
 import { RRule } from './rrule'
 import { DateWithZone } from './datewithzone'
 import { iter } from './iter'
@@ -43,8 +43,8 @@ export function iterSet<M extends QueryMethodTypes>(
   }
 
   if (iterResult.method === 'between') {
-    // @ts-expect-error TS2345 — strict pass: pending refactor
-    evalExdate(iterResult.args.after, iterResult.args.before)
+    const betweenArgs = iterResult.args as NarrowIterArgs<'between'>
+    evalExdate(betweenArgs.after, betweenArgs.before)
     iterResult.accept = function (date) {
       const dt = Number(date)
       if (!_exdateHash[dt]) {
