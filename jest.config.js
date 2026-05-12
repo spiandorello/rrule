@@ -16,4 +16,8 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   reporters,
+  coverageProvider: 'v8',
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['json', 'lcov', 'text-summary'],
 }
