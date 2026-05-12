@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
-    "strict": false,
-    "noImplicitAny": true,
+    "strict": true,
     "sourceMap": true,
     "module": "commonjs",
     "esModuleInterop": true,

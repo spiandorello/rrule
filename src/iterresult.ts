@@ -56,13 +56,18 @@ export default class IterResult<M extends QueryMethodTypes> {
     this.maxIterations = maxIterations
 
     if (method === 'between') {
+      // @ts-expect-error TS2322 — strict pass: pending refactor
       this.maxDate = args.inc
         ? args.before
-        : new Date(args.before.getTime() - 1)
+        : // @ts-expect-error TS18048 — strict pass: pending refactor
+          new Date(args.before.getTime() - 1)
+      // @ts-expect-error TS18048/TS2322 — strict pass: pending refactor
       this.minDate = args.inc ? args.after : new Date(args.after.getTime() + 1)
     } else if (method === 'before') {
+      // @ts-expect-error TS18048/TS2322 — strict pass: pending refactor
       this.maxDate = args.inc ? args.dt : new Date(args.dt.getTime() - 1)
     } else if (method === 'after') {
+      // @ts-expect-error TS18048/TS2322 — strict pass: pending refactor
       this.minDate = args.inc ? args.dt : new Date(args.dt.getTime() + 1)
     }
   }

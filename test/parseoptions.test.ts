@@ -54,6 +54,7 @@ describe('interval', () => {
   it('defaults to 1 when null', () => {
     const options = parseOptions({
       freq: RRule.DAILY,
+      // @ts-expect-error TS2322 — strict pass: pending refactor
       interval: null,
     })
     expect(options.parsedOptions.interval).toBe(1)
