@@ -41,6 +41,7 @@
     "clean": "rm -rf dist/",
     "lint": "yarn eslint .",
     "lint:fix": "yarn eslint . --fix",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "yarn prettier --write .",
     "format-check": "yarn prettier --check .",
     "test": "jest **/*.test.ts",
