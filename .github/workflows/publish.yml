@@ -44,7 +44,33 @@ jobs:
           LANG: en_US
           TZ: America/Los_Angeles
 
+      - name: Pack tarball
+        id: pack
+        run: |
+          npm pack
+          TARBALL=$(ls -t spiandorello-rrulejs-*.tgz | head -1)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "Packed: $TARBALL"
+
+      - name: Smoke test packed tarball (CJS)
+        run: |
+          mkdir -p smoke
+          cd smoke
+          npm init -y > /dev/null
+          npm install --no-save "../${{ steps.pack.outputs.tarball }}"
+          node -e "
+            const m = require('@spiandorello/rrulejs');
+            const required = ['RRule', 'RRuleSet', 'rrulestr'];
+            for (const k of required) {
+              if (typeof m[k] === 'undefined') {
+                console.error('Missing CJS export: ' + k);
+                process.exit(1);
+              }
+            }
+            console.log('CJS smoke OK');
+          "
+
       - name: Publish
-        run: npm publish --provenance --access public
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
