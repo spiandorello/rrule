@@ -1,15 +1,13 @@
 {
   "compilerOptions": {
-    "noEmit": true,
+    "strict": false,
     "noImplicitAny": true,
     "sourceMap": true,
     "module": "commonjs",
-    "noEmitOnError": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "target": "es6",
-    "baseUrl": ".",
-    "rootDirs": ["./src/", "./test/"]
+    "target": "es2022",
+    "types": ["node", "jest"]
   },
   "include": ["./src/**/*", "./test/**/*"],
   "exclude": ["node_modules"]

@@ -1,19 +1,20 @@
 {
   "compilerOptions": {
-    "baseUrl": "./dist/esm",
+    "rootDir": "./src",
     "outDir": "./dist/esm",
     "declaration": true,
     "declarationMap": true,
+    "strict": false,
     "noImplicitAny": true,
     "sourceMap": true,
     "module": "es2015",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmitOnError": true,
-    "target": "es5",
+    "target": "es2022",
     "importHelpers": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "rootDirs": ["./src/"]
+    "types": ["node"]
   },
   "include": ["./src/**/*"],
   "exclude": ["node_modules", "./test/**/*"]
