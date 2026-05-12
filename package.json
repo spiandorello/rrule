@@ -84,6 +84,9 @@
     "dist",
     "README.md"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "peerDependencies": {},
   "dependencies": {
     "tslib": "^2.8.1"
