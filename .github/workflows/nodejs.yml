@@ -17,13 +17,44 @@ jobs:
       - run: npm install -g nyc
       - run: yarn install --ignore-engines
       - run: yarn build
-      - run: LANG=en_CA TZ=America/Vancouver yarn test
-      - run: LANG=en_US TZ=America/Los_Angeles yarn test
-      - run: LANG=sw_KE TZ=Africa/Nairobi yarn test
-      - run: LANG=en_KI TZ=Pacific/Kiritimati yarn test
-      - run: LANG=jp_JP TZ=Asia/Tokyo yarn test-ci
+      - name: Test (en_CA / Vancouver)
+        env:
+          LANG: en_CA
+          TZ: America/Vancouver
+          JEST_JUNIT_OUTPUT_NAME: junit-en_CA-vancouver-node${{ matrix.node-version }}.xml
+        run: yarn test
+      - name: Test (en_US / Los Angeles)
+        env:
+          LANG: en_US
+          TZ: America/Los_Angeles
+          JEST_JUNIT_OUTPUT_NAME: junit-en_US-los_angeles-node${{ matrix.node-version }}.xml
+        run: yarn test
+      - name: Test (sw_KE / Nairobi)
+        env:
+          LANG: sw_KE
+          TZ: Africa/Nairobi
+          JEST_JUNIT_OUTPUT_NAME: junit-sw_KE-nairobi-node${{ matrix.node-version }}.xml
+        run: yarn test
+      - name: Test (en_KI / Kiritimati)
+        env:
+          LANG: en_KI
+          TZ: Pacific/Kiritimati
+          JEST_JUNIT_OUTPUT_NAME: junit-en_KI-kiritimati-node${{ matrix.node-version }}.xml
+        run: yarn test
+      - name: Test (jp_JP / Tokyo, with coverage)
+        env:
+          LANG: jp_JP
+          TZ: Asia/Tokyo
+          JEST_JUNIT_OUTPUT_NAME: junit-jp_JP-tokyo-node${{ matrix.node-version }}.xml
+        run: yarn test-ci
       - run: nyc report --reporter=json
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: reports/junit
