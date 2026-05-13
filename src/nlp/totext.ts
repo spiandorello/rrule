@@ -1,6 +1,6 @@
 import ENGLISH, { Language } from './i18n'
 import { RRule } from '../rrule'
-import { Options, ByWeekday } from '../types'
+import { ByWeekday, Options, ParsedOptions } from '../types'
 import { Weekday } from '../weekday'
 import { isArray, isNumber, isPresent } from '../helpers'
 
@@ -46,13 +46,12 @@ export default class ToText {
   private gettext: GetText
   private dateFormatter: DateFormatter
   private language: Language
-  private options: Partial<Options>
+  private options: ParsedOptions
   private origOptions: Partial<Options>
-  // @ts-expect-error TS2564 — strict pass: pending refactor
-  private bymonthday: Options['bymonthday'] | null
+  private bymonthday: number[] | null = null
   private byweekday: {
-    allWeeks: ByWeekday[] | null
-    someWeeks: ByWeekday[] | null
+    allWeeks: Weekday[] | null
+    someWeeks: Weekday[] | null
     isWeekdays: boolean
     isEveryDay: boolean
   } | null
@@ -72,9 +71,7 @@ export default class ToText {
     this.origOptions = rrule.origOptions
 
     if (this.origOptions.bymonthday) {
-      // @ts-expect-error TS2769 — strict pass: pending refactor
       const bymonthday = ([] as number[]).concat(this.options.bymonthday)
-      // @ts-expect-error TS2769 — strict pass: pending refactor
       const bynmonthday = ([] as number[]).concat(this.options.bynmonthday)
 
       bymonthday.sort((a, b) => a - b)
@@ -85,20 +82,22 @@ export default class ToText {
     }
 
     if (isPresent(this.origOptions.byweekday)) {
-      const byweekday = !isArray(this.origOptions.byweekday)
+      const rawByweekday = !isArray(this.origOptions.byweekday)
         ? [this.origOptions.byweekday]
         : this.origOptions.byweekday
-      const days = String(byweekday)
+      const days = String(rawByweekday)
+      const byweekday = rawByweekday as Weekday[]
+
+      const allWeeks: Weekday[] | null = byweekday.filter(
+        (weekday) => !weekday.n
+      )
+      const someWeeks: Weekday[] | null = byweekday.filter((weekday) =>
+        Boolean(weekday.n)
+      )
 
       this.byweekday = {
-        // @ts-expect-error TS2769 — strict pass: pending refactor
-        allWeeks: byweekday.filter(function (weekday: Weekday) {
-          return !weekday.n
-        }),
-        // @ts-expect-error TS2769 — strict pass: pending refactor
-        someWeeks: byweekday.filter(function (weekday: Weekday) {
-          return Boolean(weekday.n)
-        }),
+        allWeeks,
+        someWeeks,
         isWeekdays:
           days.indexOf('MO') !== -1 &&
           days.indexOf('TU') !== -1 &&
@@ -121,15 +120,11 @@ export default class ToText {
         return a.weekday - b.weekday
       }
 
-      // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
-      this.byweekday.allWeeks.sort(sortWeekDays)
-      // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
-      this.byweekday.someWeeks.sort(sortWeekDays)
+      this.byweekday.allWeeks?.sort(sortWeekDays)
+      this.byweekday.someWeeks?.sort(sortWeekDays)
 
-      // @ts-expect-error TS2531 — strict pass: pending refactor
-      if (!this.byweekday.allWeeks.length) this.byweekday.allWeeks = null
-      // @ts-expect-error TS2531 — strict pass: pending refactor
-      if (!this.byweekday.someWeeks.length) this.byweekday.someWeeks = null
+      if (!this.byweekday.allWeeks?.length) this.byweekday.allWeeks = null
+      if (!this.byweekday.someWeeks?.length) this.byweekday.someWeeks = null
     } else {
       this.byweekday = null
     }
@@ -169,7 +164,6 @@ export default class ToText {
   toString() {
     const gettext = this.gettext
 
-    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (!(this.options.freq in ToText.IMPLEMENTED)) {
       return gettext('RRule error: Unable to fully convert this rrule to text')
     }
@@ -205,11 +199,9 @@ export default class ToText {
   HOURLY() {
     const gettext = this.gettext
 
-    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (this.options.interval !== 1) this.add(this.options.interval.toString())
 
     this.add(
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.plural(this.options.interval) ? gettext('hours') : gettext('hour')
     )
   }
@@ -217,11 +209,9 @@ export default class ToText {
   MINUTELY() {
     const gettext = this.gettext
 
-    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (this.options.interval !== 1) this.add(this.options.interval.toString())
 
     this.add(
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.plural(this.options.interval)
         ? gettext('minutes')
         : gettext('minute')
@@ -231,19 +221,16 @@ export default class ToText {
   DAILY() {
     const gettext = this.gettext
 
-    // @ts-expect-error TS2532 — strict pass: pending refactor
     if (this.options.interval !== 1) this.add(this.options.interval.toString())
 
     if (this.byweekday && this.byweekday.isWeekdays) {
       this.add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval)
           ? gettext('weekdays')
           : gettext('weekday')
       )
     } else {
       this.add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('days') : gettext('day')
       )
     }
@@ -266,9 +253,7 @@ export default class ToText {
     const gettext = this.gettext
 
     if (this.options.interval !== 1) {
-      // @ts-expect-error TS2532 — strict pass: pending refactor
       this.add(this.options.interval.toString()).add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('weeks') : gettext('week')
       )
     }
@@ -285,7 +270,6 @@ export default class ToText {
       }
     } else if (this.byweekday && this.byweekday.isEveryDay) {
       this.add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('days') : gettext('day')
       )
     } else {
@@ -313,9 +297,7 @@ export default class ToText {
 
     if (this.origOptions.bymonth) {
       if (this.options.interval !== 1) {
-        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString()).add(gettext('months'))
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         if (this.plural(this.options.interval)) this.add(gettext('in'))
       } else {
         // this.add(gettext('MONTH'))
@@ -323,11 +305,9 @@ export default class ToText {
       this._bymonth()
     } else {
       if (this.options.interval !== 1) {
-        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString())
       }
       this.add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval)
           ? gettext('months')
           : gettext('month')
@@ -347,7 +327,6 @@ export default class ToText {
 
     if (this.origOptions.bymonth) {
       if (this.options.interval !== 1) {
-        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString())
         this.add(gettext('years'))
       } else {
@@ -356,11 +335,9 @@ export default class ToText {
       this._bymonth()
     } else {
       if (this.options.interval !== 1) {
-        // @ts-expect-error TS2532 — strict pass: pending refactor
         this.add(this.options.interval.toString())
       }
       this.add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         this.plural(this.options.interval) ? gettext('years') : gettext('year')
       )
     }
@@ -373,7 +350,6 @@ export default class ToText {
 
     if (this.options.byyearday) {
       this.add(gettext('on the'))
-        // @ts-expect-error TS2345 — strict pass: pending refactor
         .add(this.list(this.options.byyearday, this.nth, gettext('and')))
         .add(gettext('day'))
     }
@@ -381,7 +357,7 @@ export default class ToText {
     if (this.options.byweekno) {
       this.add(gettext('in'))
         .add(
-          this.plural((this.options.byweekno as number[]).length)
+          this.plural(this.options.byweekno.length)
             ? gettext('weeks')
             : gettext('week')
         )
@@ -391,19 +367,17 @@ export default class ToText {
 
   private _bymonthday() {
     const gettext = this.gettext
+    const bymonthday = this.bymonthday as number[]
     if (this.byweekday && this.byweekday.allWeeks) {
       this.add(gettext('on'))
         .add(
-          // @ts-expect-error TS2345 — strict pass: pending refactor
           this.list(this.byweekday.allWeeks, this.weekdaytext, gettext('or'))
         )
         .add(gettext('the'))
-        // @ts-expect-error TS2345 — strict pass: pending refactor
-        .add(this.list(this.bymonthday, this.nth, gettext('or')))
+        .add(this.list(bymonthday, this.nth, gettext('or')))
     } else {
       this.add(gettext('on the')).add(
-        // @ts-expect-error TS2345 — strict pass: pending refactor
-        this.list(this.bymonthday, this.nth, gettext('and'))
+        this.list(bymonthday, this.nth, gettext('and'))
       )
     }
     // this.add(gettext('DAY'))
@@ -411,38 +385,31 @@ export default class ToText {
 
   private _byweekday() {
     const gettext = this.gettext
-    // @ts-expect-error TS2531 — strict pass: pending refactor
-    if (this.byweekday.allWeeks && !this.byweekday.isWeekdays) {
+    const byweekday = this.byweekday!
+    if (byweekday.allWeeks && !byweekday.isWeekdays) {
       this.add(gettext('on')).add(
-        // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
-        this.list(this.byweekday.allWeeks, this.weekdaytext)
+        this.list(byweekday.allWeeks, this.weekdaytext)
       )
     }
 
-    // @ts-expect-error TS2531 — strict pass: pending refactor
-    if (this.byweekday.someWeeks) {
-      // @ts-expect-error TS2531 — strict pass: pending refactor
-      if (this.byweekday.allWeeks) this.add(gettext('and'))
+    if (byweekday.someWeeks) {
+      if (byweekday.allWeeks) this.add(gettext('and'))
 
       this.add(gettext('on the')).add(
-        // @ts-expect-error TS2345/TS2531 — strict pass: pending refactor
-        this.list(this.byweekday.someWeeks, this.weekdaytext, gettext('and'))
+        this.list(byweekday.someWeeks, this.weekdaytext, gettext('and'))
       )
     }
   }
 
   private _byhour() {
     const gettext = this.gettext
+    const byhour = this.origOptions.byhour as number | number[]
 
-    this.add(gettext('at')).add(
-      // @ts-expect-error TS2345 — strict pass: pending refactor
-      this.list(this.origOptions.byhour, undefined, gettext('and'))
-    )
+    this.add(gettext('at')).add(this.list(byhour, undefined, gettext('and')))
   }
 
   private _bymonth() {
     this.add(
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       this.list(this.options.bymonth, this.monthtext, this.gettext('and'))
     )
   }
@@ -482,11 +449,8 @@ export default class ToText {
 
   weekdaytext(wday: Weekday | number) {
     const weekday = isNumber(wday) ? (wday + 1) % 7 : wday.getJsWeekday()
-    return (
-      // @ts-expect-error TS2345 — strict pass: pending refactor
-      ((wday as Weekday).n ? this.nth((wday as Weekday).n) + ' ' : '') +
-      this.language.dayNames[weekday]
-    )
+    const n = isNumber(wday) ? undefined : wday.n
+    return (n ? this.nth(n) + ' ' : '') + this.language.dayNames[weekday]
   }
 
   plural(n: number) {
@@ -499,9 +463,9 @@ export default class ToText {
     return this
   }
 
-  list(
-    arr: ByWeekday | ByWeekday[],
-    callback?: GetText,
+  list<T extends ByWeekday>(
+    arr: T | T[],
+    callback?: (this: ToText, item: T) => string,
     finalDelim?: string,
     delim = ','
   ) {
@@ -528,14 +492,14 @@ export default class ToText {
       return list
     }
 
-    callback =
+    const cb: (this: ToText, item: T) => string =
       callback ||
       function (o) {
-        return o.toString()
+        return String(o)
       }
 
-    const realCallback = (arg: ByWeekday) => {
-      return callback && callback.call(this, arg)
+    const realCallback = (arg: T) => {
+      return cb.call(this, arg)
     }
 
     if (finalDelim) {
