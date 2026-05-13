@@ -47,7 +47,7 @@ export function rebuildYear(year: number, options: ParsedOptions) {
     return result
   }
 
-  result.wnomask = repeat(0, yearlen + 7) as number[]
+  result.wnomask = repeat(0, yearlen + 7)
   let firstwkst: number
   let wyearlen: number
   let no1wkst = (firstwkst = pymod(7 - yearweekday + options.wkst, 7))
@@ -150,7 +150,7 @@ function baseYearMasks(year: number) {
 
   if (yearlen === 365) {
     return {
-      mmask: M365MASK as number[],
+      mmask: M365MASK,
       mdaymask: MDAY365MASK,
       nmdaymask: NMDAY365MASK,
       wdaymask: WDAYMASK.slice(wday),
@@ -159,7 +159,7 @@ function baseYearMasks(year: number) {
   }
 
   return {
-    mmask: M366MASK as number[],
+    mmask: M366MASK,
     mdaymask: MDAY366MASK,
     nmdaymask: NMDAY366MASK,
     wdaymask: WDAYMASK.slice(wday),

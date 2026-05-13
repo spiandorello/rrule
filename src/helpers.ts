@@ -38,7 +38,15 @@ export const clone = function <T>(array: T[]): T[] {
   return ([] as T[]).concat(array)
 }
 
-export const repeat = function <T>(value: T | T[], times: number): (T | T[])[] {
+type RepeatFn = {
+  <T>(value: T, times: number): T[]
+  <T>(value: T[], times: number): T[][]
+}
+
+export const repeat: RepeatFn = function <T>(
+  value: T | T[],
+  times: number
+): T[] | T[][] {
   let i = 0
   const array: (T | T[])[] = []
 
@@ -47,7 +55,7 @@ export const repeat = function <T>(value: T | T[], times: number): (T | T[])[] {
   } else {
     for (; i < times; i++) array[i] = value
   }
-  return array
+  return array as T[] | T[][]
 }
 
 export const toArray = function <T>(item: T | T[]): T[] {
