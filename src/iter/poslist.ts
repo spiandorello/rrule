@@ -1,7 +1,7 @@
-import { combine, fromOrdinal, sort } from '../dateutil'
-import Iterinfo from '../iterinfo/index'
-import { pymod, isPresent, includes } from '../helpers'
-import { Time } from '../datetime'
+import { combine, fromOrdinal, sort } from '../dateutil.js'
+import Iterinfo from '../iterinfo/index.js'
+import { pymod, isPresent, includes } from '../helpers.js'
+import { Time } from '../datetime.js'
 
 export function buildPoslist(
   bysetpos: number[],

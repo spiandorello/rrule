@@ -1,4 +1,4 @@
-import { Weekday, WeekdayStr } from './weekday'
+import { Weekday, WeekdayStr } from './weekday.js'
 
 export interface QueryMethods {
   all(): Date[]

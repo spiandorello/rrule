@@ -1,4 +1,4 @@
-import IterResult, { IterArgs, RRuleIterationLimitError } from './iterresult'
+import IterResult, { IterArgs, RRuleIterationLimitError } from './iterresult.js'
 
 type Iterator = (d: Date, len: number) => boolean
 

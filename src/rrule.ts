@@ -1,10 +1,10 @@
-import { isValidDate } from './dateutil'
+import { isValidDate } from './dateutil.js'
 
-import IterResult, { IterArgs } from './iterresult'
-import CallbackIterResult from './callbackiterresult'
-import { Language } from './nlp/i18n'
-import { fromText, parseText, toText, isFullyConvertible } from './nlp/index'
-import { DateFormatter, GetText } from './nlp/totext'
+import IterResult, { IterArgs } from './iterresult.js'
+import CallbackIterResult from './callbackiterresult.js'
+import { Language } from './nlp/i18n.js'
+import { fromText, parseText, toText, isFullyConvertible } from './nlp/index.js'
+import { DateFormatter, GetText } from './nlp/totext.js'
 import {
   ParsedOptions,
   Options,
@@ -12,13 +12,13 @@ import {
   QueryMethods,
   QueryMethodTypes,
   IterResultType,
-} from './types'
-import { parseOptions, initializeOptions } from './parseoptions'
-import { parseString } from './parsestring'
-import { optionsToString } from './optionstostring'
-import { Cache, CacheKeys } from './cache'
-import { Weekday } from './weekday'
-import { iter } from './iter/index'
+} from './types.js'
+import { parseOptions, initializeOptions } from './parseoptions.js'
+import { parseString } from './parsestring.js'
+import { optionsToString } from './optionstostring.js'
+import { Cache, CacheKeys } from './cache.js'
+import { Weekday } from './weekday.js'
+import { iter } from './iter/index.js'
 
 // =============================================================================
 // RRule

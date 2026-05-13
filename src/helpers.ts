@@ -2,7 +2,7 @@
 // Helper functions
 // =============================================================================
 
-import { ALL_WEEKDAYS, WeekdayStr } from './weekday'
+import { ALL_WEEKDAYS, WeekdayStr } from './weekday.js'
 
 export const isPresent = function <T>(
   value?: T | null | undefined

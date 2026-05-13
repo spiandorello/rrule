@@ -1,9 +1,9 @@
-import { parseString } from '../parsestring'
-import { Options } from '../types'
-import { Weekday } from '../weekday'
-import { REVERSE_FREQUENCY_MAP, WEEKDAY_INDEX_TO_STR } from './constants'
-import { formatUtcDateToYmd } from './helpers'
-import { Recurrence, RecurrenceEnd, RecurrenceWeekday } from './types'
+import { parseString } from '../parsestring.js'
+import { Options } from '../types.js'
+import { Weekday } from '../weekday.js'
+import { REVERSE_FREQUENCY_MAP, WEEKDAY_INDEX_TO_STR } from './constants.js'
+import { formatUtcDateToYmd } from './helpers.js'
+import { Recurrence, RecurrenceEnd, RecurrenceWeekday } from './types.js'
 
 function isPresentArray<T>(value: T | T[] | null | undefined): boolean {
   if (value === null || value === undefined) return false

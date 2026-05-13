@@ -22,7 +22,7 @@
     "David Golightly"
   ],
   "type": "commonjs",
-  "main": "dist/es5/rrule.js",
+  "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "exports": {
@@ -32,8 +32,8 @@
         "default": "./dist/esm/index.js"
       },
       "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/es5/rrule.js"
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
       }
     },
     "./package.json": "./package.json"
@@ -51,7 +51,7 @@
   "scripts": {
     "prebuild": "yarn clean",
     "prepublishOnly": "yarn build",
-    "build": "yarn lint && yarn format-check && tsc -b tsconfig.build.json && webpack && node scripts/fix-esm-extensions.mjs",
+    "build": "yarn lint && yarn format-check && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\" && node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'}))\"",
     "clean": "rm -rf dist/",
     "lint": "yarn eslint .",
     "lint:fix": "yarn eslint . --fix",
@@ -68,7 +68,6 @@
     ]
   },
   "devDependencies": {
-    "@codecov/webpack-plugin": "^2.0.1",
     "@eslint/js": "^10.0.1",
     "@types/assert": "^1.5.11",
     "@types/jest": "^30.0.0",
@@ -86,15 +85,9 @@
     "lint-staged": "^17.0.4",
     "mockdate": "^3.0.5",
     "prettier": "^3.8.3",
-    "source-map-loader": "^5.0.0",
     "source-map-support": "^0.5.16",
-    "terser-webpack-plugin": "^5.6.0",
     "ts-jest": "^29.4.9",
-    "ts-loader": "^9.5.7",
-    "typescript": "^6.0.3",
-    "unminified-webpack-plugin": "^3.0.0",
-    "webpack": "^5.94.0",
-    "webpack-cli": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "files": [
     "dist",

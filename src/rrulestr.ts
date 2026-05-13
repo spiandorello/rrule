@@ -1,14 +1,14 @@
-import { RRule } from './rrule'
-import { RRuleSet } from './rruleset'
-import { untilStringToDate } from './dateutil'
-import { includes, split } from './helpers'
-import { Options } from './types'
+import { RRule } from './rrule.js'
+import { RRuleSet } from './rruleset.js'
+import { untilStringToDate } from './dateutil.js'
+import { includes, split } from './helpers.js'
+import { Options } from './types.js'
 import {
   parseString,
   parseDtstart,
   parseStringConfig,
   RRuleStringTooLargeError,
-} from './parsestring'
+} from './parsestring.js'
 
 export interface RRuleStrOptions {
   dtstart: Date | null
