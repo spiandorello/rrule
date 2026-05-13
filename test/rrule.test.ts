@@ -203,15 +203,10 @@ describe('RRule', function () {
       args: [parse('20220613T093000'), parse('20220716T083000')],
     },
     [
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       expectedDate(datetime(2022, 6, 14, 9, 0), undefined, 'Europe/London'),
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       expectedDate(datetime(2022, 6, 21, 9, 0), undefined, 'Europe/London'),
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       expectedDate(datetime(2022, 6, 28, 9, 0), undefined, 'Europe/London'),
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       expectedDate(datetime(2022, 7, 5, 9, 0), undefined, 'Europe/London'),
-      // @ts-expect-error TS2345 — strict pass: pending refactor
       expectedDate(datetime(2022, 7, 12, 9, 0), undefined, 'Europe/London'),
     ]
   )
@@ -4015,13 +4010,11 @@ describe('RRule', function () {
       })
 
       expect(date.getTime()).toBe(rr.options.dtstart.getTime())
-      // @ts-expect-error TS2322/TS2345 — strict pass: pending refactor
-      const res: Date = rr.before(rr.after(rr.options.dtstart))
-
-      let resTimestamp: number
-      if (res != null) resTimestamp = res.getTime()
-      // @ts-expect-error TS2454 — strict pass: pending refactor
-      expect(resTimestamp).toBe(rr.options.dtstart.getTime())
+      const next = rr.after(rr.options.dtstart)
+      expect(next).not.toBeNull()
+      const res = rr.before(next as Date)
+      expect(res).not.toBeNull()
+      expect((res as Date).getTime()).toBe(rr.options.dtstart.getTime())
     })
   })
 
@@ -4250,8 +4243,7 @@ describe('RRule', function () {
   })
 
   it('throws an error when dtstart is invalid', () => {
-    // @ts-expect-error TS2769 — strict pass: pending refactor
-    const invalidDate = new Date(undefined)
+    const invalidDate = new Date(undefined as unknown as string)
     const validDate = datetime(2017, 1, 1)
     expect(() => new RRule({ dtstart: invalidDate })).toThrow(
       'Invalid options: dtstart'
