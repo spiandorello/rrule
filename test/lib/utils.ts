@@ -221,7 +221,7 @@ testRecurring.skip = function (...args: unknown[]) {
 
 export function expectedDate(
   startDate: Date,
-  currentLocalDate: Date,
+  _currentLocalDate: Date | undefined,
   targetZone: string
 ): Date {
   return dateInTimeZone(startDate, targetZone)
