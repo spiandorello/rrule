@@ -105,14 +105,14 @@ export default class Iterinfo {
   mdayset(_: unknown, month: number): DaySet {
     const start = this.mrange[month - 1]
     const end = this.mrange[month]
-    const set = repeat(null, this.yearlen) as (number | null)[]
+    const set = repeat<number | null>(null, this.yearlen)
     for (let i = start; i < end; i++) set[i] = i
     return [set, start, end]
   }
 
   wdayset(year: number, month: number, day: number): DaySet {
     // We need to handle cross-year weeks here.
-    const set = repeat(null, this.yearlen + 7) as (number | null)[]
+    const set = repeat<number | null>(null, this.yearlen + 7)
     let i = toOrdinal(datetime(year, month, day)) - this.yearordinal
     const start = i
     for (let j = 0; j < 7; j++) {
@@ -124,7 +124,7 @@ export default class Iterinfo {
   }
 
   ddayset(year: number, month: number, day: number): DaySet {
-    const set = repeat(null, this.yearlen) as (number | null)[]
+    const set = repeat<number | null>(null, this.yearlen)
     const i = toOrdinal(datetime(year, month, day)) - this.yearordinal
     set[i] = i
     return [set, i, i + 1]

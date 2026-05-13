@@ -48,7 +48,7 @@ export function rebuildMonth(
 
   // Weekly frequency won't get here, so we may not
   // care about cross-year weekly periods.
-  result.nwdaymask = repeat(0, yearlen) as number[]
+  result.nwdaymask = repeat(0, yearlen)
 
   for (let j = 0; j < ranges.length; j++) {
     const rang = ranges[j]
