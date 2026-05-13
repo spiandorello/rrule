@@ -30,11 +30,10 @@ export class DateWithZone {
   }
 
   public rezonedDate() {
-    if (this.isUTC) {
+    if (this.isUTC || !this.tzid) {
       return this.date
     }
 
-    // @ts-expect-error TS2345 — strict pass: pending refactor
     return dateInTimeZone(this.date, this.tzid)
   }
 }

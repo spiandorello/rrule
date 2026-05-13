@@ -23,8 +23,9 @@ export function optionsToString(options: Partial<Options>) {
 
     switch (key) {
       case 'FREQ':
-        // @ts-expect-error TS2538 — strict pass: pending refactor
-        outValue = RRule.FREQUENCIES[options.freq]
+        if (options.freq !== undefined && options.freq !== null) {
+          outValue = RRule.FREQUENCIES[options.freq]
+        }
         break
       case 'WKST':
         if (isNumber(value)) {

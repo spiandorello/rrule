@@ -138,8 +138,7 @@ function buildRule(s: string, options: Partial<RRuleStrOptions>) {
       rset.exdate(date)
     })
 
-    // @ts-expect-error TS2345 — strict pass: pending refactor
-    if (options.compatible && options.dtstart) rset.rdate(dtstart)
+    if (options.compatible && options.dtstart && dtstart) rset.rdate(dtstart)
     return rset
   }
 
