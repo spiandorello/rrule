@@ -40,7 +40,7 @@ function rejectSingleNumberOnly(
 }
 
 function mapByWeekday(
-  byweekday: Options['byweekday']
+  byweekday: Partial<Options>['byweekday']
 ): [RecurrenceWeekday, ...RecurrenceWeekday[]] | undefined {
   if (byweekday === null || byweekday === undefined) return undefined
   const list = Array.isArray(byweekday) ? byweekday : [byweekday]
@@ -117,7 +117,6 @@ export function rruleStringToRecurrence(rrule: string): Recurrence {
     recurrence.interval = options.interval
   }
 
-  // @ts-expect-error TS2345 — strict pass: pending refactor
   const byWeekday = mapByWeekday(options.byweekday)
   if (byWeekday) {
     recurrence.byWeekday = byWeekday
