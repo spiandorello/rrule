@@ -1,6 +1,6 @@
-import { ParsedOptions } from '../types'
-import { RRule } from '../rrule'
-import { empty, notEmpty, repeat, pymod } from '../helpers'
+import { ParsedOptions } from '../types.js'
+import { RRule } from '../rrule.js'
+import { empty, notEmpty, repeat, pymod } from '../helpers.js'
 
 export interface MonthInfo {
   lastyear: number

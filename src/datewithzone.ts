@@ -1,4 +1,4 @@
-import { dateInTimeZone, timeToUntilString } from './dateutil'
+import { dateInTimeZone, timeToUntilString } from './dateutil.js'
 
 export class DateWithZone {
   public date: Date

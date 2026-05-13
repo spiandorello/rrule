@@ -1,11 +1,11 @@
-import { Frequency } from '../types'
-import { Days } from '../rrule'
-import { Weekday } from '../weekday'
+import { Frequency } from '../types.js'
+import { Days } from '../rrule.js'
+import { Weekday } from '../weekday.js'
 import {
   RecurrenceFrequency,
   RecurrenceWeekday,
   TypedRecurrenceOptions,
-} from './types'
+} from './types.js'
 
 export const FREQUENCY_MAP: Record<RecurrenceFrequency, Frequency> = {
   YEARLY: Frequency.YEARLY,

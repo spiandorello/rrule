@@ -19,4 +19,3 @@ ignore:
   - 'test/'
   - 'node_modules/'
   - '.github/'
-  - 'webpack.config.js'

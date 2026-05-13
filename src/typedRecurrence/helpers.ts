@@ -1,4 +1,4 @@
-import { isValidDate } from '../dateutil'
+import { isValidDate } from '../dateutil.js'
 
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 

@@ -5,7 +5,7 @@ export {
   RecurrenceWeekday,
   TypedRecurrenceOptions,
   TypedRecurrenceUntilMode,
-} from './types'
-export { parseYmdToUtcEndOfDay, formatUtcDateToYmd } from './helpers'
-export { recurrenceToRRule, recurrenceToRRuleString } from './mapper'
-export { rruleStringToRecurrence } from './parser'
+} from './types.js'
+export { parseYmdToUtcEndOfDay, formatUtcDateToYmd } from './helpers.js'
+export { recurrenceToRRule, recurrenceToRRuleString } from './mapper.js'
+export { rruleStringToRecurrence } from './parser.js'

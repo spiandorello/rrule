@@ -1,10 +1,14 @@
-import { RRule } from '../rrule'
-import { Options } from '../types'
-import { Weekday } from '../weekday'
-import { isValidDate } from '../dateutil'
-import { DEFAULT_TYPED_OPTIONS, FREQUENCY_MAP, WEEKDAY_MAP } from './constants'
-import { Recurrence, TypedRecurrenceOptions } from './types'
-import { ymdEndOfDayLocal, ymdToUtcMidnight } from './helpers'
+import { RRule } from '../rrule.js'
+import { Options } from '../types.js'
+import { Weekday } from '../weekday.js'
+import { isValidDate } from '../dateutil.js'
+import {
+  DEFAULT_TYPED_OPTIONS,
+  FREQUENCY_MAP,
+  WEEKDAY_MAP,
+} from './constants.js'
+import { Recurrence, TypedRecurrenceOptions } from './types.js'
+import { ymdEndOfDayLocal, ymdToUtcMidnight } from './helpers.js'
 
 function resolveOptions(
   options?: TypedRecurrenceOptions

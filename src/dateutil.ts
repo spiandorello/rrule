@@ -1,5 +1,5 @@
-import { padStart } from './helpers'
-import { Time } from './datetime'
+import { padStart } from './helpers.js'
+import { Time } from './datetime.js'
 
 type Datelike = Pick<Date, 'getTime'>
 

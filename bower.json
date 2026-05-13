@@ -17,6 +17,6 @@
       "name": "Lars Schöning"
     }
   ],
-  "main": "dist/es5/rrule.js",
+  "main": "dist/cjs/index.js",
   "ignore": ["**/.*", "node_modules", "components"]
 }

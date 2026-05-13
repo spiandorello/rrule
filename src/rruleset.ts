@@ -1,11 +1,11 @@
-import { RRule } from './rrule'
-import { sort, timeToUntilString } from './dateutil'
-import { includes } from './helpers'
-import IterResult from './iterresult'
-import { iterSet } from './iterset'
-import { QueryMethodTypes, IterResultType } from './types'
-import { rrulestr } from './rrulestr'
-import { optionsToString } from './optionstostring'
+import { RRule } from './rrule.js'
+import { sort, timeToUntilString } from './dateutil.js'
+import { includes } from './helpers.js'
+import IterResult from './iterresult.js'
+import { iterSet } from './iterset.js'
+import { QueryMethodTypes, IterResultType } from './types.js'
+import { rrulestr } from './rrulestr.js'
+import { optionsToString } from './optionstostring.js'
 
 function createGetterSetter<T>(
   fieldName: string

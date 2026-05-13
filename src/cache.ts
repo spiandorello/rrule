@@ -1,6 +1,6 @@
-import IterResult, { IterArgs } from './iterresult'
-import { clone, cloneDates } from './dateutil'
-import { isArray } from './helpers'
+import IterResult, { IterArgs } from './iterresult.js'
+import { clone, cloneDates } from './dateutil.js'
+import { isArray } from './helpers.js'
 
 export type CacheKeys = 'before' | 'after' | 'between'
 
