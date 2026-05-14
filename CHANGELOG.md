@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.0.0](https://github.com/spiandorello/rrule/compare/v4.0.0...v5.0.0) (2026-05-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **typedRecurrence:** recurrenceToRRuleString output bytes change on non-UTC hosts when untilMode is left at default. Callers who want the previous runtime-TZ behavior must now pass untilMode: 'inclusive-day' explicitly (and will see a deprecation warning). Silence with SPIANDORELLO_RRULEJS_NO_WARN=1.
+
+### Features
+
+* **typedRecurrence:** default untilMode to 'inclusive-day-utc' for deterministic roundtrip ([559e82f](https://github.com/spiandorello/rrule/commit/559e82fdfad789402ae5ab4c7a6358b19b3559d1))
+
 ## [4.0.0](https://github.com/spiandorello/rrule/compare/v3.0.0...v4.0.0) (2026-05-14)
 
 
