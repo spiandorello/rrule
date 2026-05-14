@@ -1,5 +1,51 @@
 # Changelog
 
+## [5.0.0](https://github.com/spiandorello/rrule/compare/v4.0.0...v5.0.0) (2026-05-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pkg:** package.json now declares an `exports` map. Only the root entry (`@spiandorello/rrulejs`) and `./package.json` are importable by consumers; any code reaching into `dist/...` directly must switch to the root entry. Drives the v3.0.0 release-please bump.
+
+### Features
+
+* add getters for rrules, exrules, rdates, exdates ([3723f60](https://github.com/spiandorello/rrule/commit/3723f60f0728c396dbbe82a73515db8f4d165fc3))
+* **nlp:** support weekly by hour texts ([#590](https://github.com/spiandorello/rrule/issues/590)) ([62e7320](https://github.com/spiandorello/rrule/commit/62e7320a35195b2eef6bbec75887e8ec209b20ed))
+* **pkg:** add exports map and CJS-typed declarations ([c8dfb3c](https://github.com/spiandorello/rrule/commit/c8dfb3cf3f2e8dd27811a6324d4ac5b57b36a13f))
+* **typed-recurrence:** add typed Recurrence API with inclusive UNTIL ([#8](https://github.com/spiandorello/rrule/issues/8)) ([0fa5a7e](https://github.com/spiandorello/rrule/commit/0fa5a7ee7988ec7c26b9cd7b05e6772550cb5bb2))
+
+
+### Bug Fixes
+
+* 320 ([1ba0f0c](https://github.com/spiandorello/rrule/commit/1ba0f0cddb34785cfc1326d9a8d7d441caf2454f))
+* 321 ([5305f1d](https://github.com/spiandorello/rrule/commit/5305f1df6809eba4273a700d70bbc7da9b348254))
+* **cache:** cache key comparison ignores milliseconds ([f446250](https://github.com/spiandorello/rrule/commit/f446250e83cb438b2b97bcafa0b2dce397c63cff))
+* **datetime:** force terminal state when iteration cap fires ([07c6104](https://github.com/spiandorello/rrule/commit/07c61042c080a64632f1b088184d96616a2eefc6))
+* Export RRule and RRuleSet as named exports ([484daef](https://github.com/spiandorello/rrule/commit/484daef666e0d03955091e8790088faf8ae8a4a1))
+* Export RRule and RRuleSet as named exports ([ed7f929](https://github.com/spiandorello/rrule/commit/ed7f9294b638f907f1bb7d492387d5dd8faa87a4))
+* format ([b28e8b8](https://github.com/spiandorello/rrule/commit/b28e8b84cc8fa4ffac09fb6e3d3a898044c78907))
+* harden parser and iter loops against DoS from untrusted input ([4723781](https://github.com/spiandorello/rrule/commit/47237818127f63c3c8c9a90f7c643ebbcb979a7a))
+* **iterresult:** cap iterations to prevent OOM on infinite rules ([6868abf](https://github.com/spiandorello/rrule/commit/6868abfd9ff59d0877572b47c1bf90ecad4803d4))
+* **iterresult:** cap iterations to prevent OOM on infinite rules ([922ed78](https://github.com/spiandorello/rrule/commit/922ed780985c60bf9db3eefae0076318adc11cf9))
+* make getters return immutable objects ([a16ad76](https://github.com/spiandorello/rrule/commit/a16ad76f0a110ef28cc6b7cddd0c19ef5ef2367b))
+* **parseoptions:** cap bysetpos array length at 732 entries ([c50b757](https://github.com/spiandorello/rrule/commit/c50b757f59177358fb92c63b34b8e1fa62b46d5d))
+* **parseoptions:** cap bysetpos array length at 732 entries ([1f59a90](https://github.com/spiandorello/rrule/commit/1f59a900f2c5f0c053711df1ac40e14b2e0c49b6))
+* **parsestring:** reject oversized RRULE input strings ([ea5ff5c](https://github.com/spiandorello/rrule/commit/ea5ff5c3c9fcc1a52390cecd6529748597702e17))
+* **parsestring:** reject oversized RRULE input strings ([a5dfa38](https://github.com/spiandorello/rrule/commit/a5dfa3873b3631e3e510f13a470f6bc40e4f9ab8))
+* removed unnecessary offset in daysBetween() ([#539](https://github.com/spiandorello/rrule/issues/539)) ([26c799f](https://github.com/spiandorello/rrule/commit/26c799f644f494dd31dcf6077983ee419c8328a0))
+* resolve circular import ([17268f4](https://github.com/spiandorello/rrule/commit/17268f467182cd2581307f58578b5c1f8a18908b))
+* resolve circular import ([95c3eb9](https://github.com/spiandorello/rrule/commit/95c3eb9af80aee1d33ca6fe9aa283074948fef5b))
+* **scripts:** split lint:fix from lint, replace deprecated prepublish ([28e2a5a](https://github.com/spiandorello/rrule/commit/28e2a5aa6887ba200deca14942c3ca5be74056c9))
+* typo plural minutes ([07580aa](https://github.com/spiandorello/rrule/commit/07580aadb191d3e82a669967494a6ca2fcee0df5))
+
+
+### Performance Improvements
+
+* **dateutil:** cache Intl.DateTimeFormat per timezone ([29de7de](https://github.com/spiandorello/rrule/commit/29de7de83501687d23283cf90d742620736899f5))
+* **dateutil:** cache Intl.DateTimeFormat per timezone (~28x faster TZID iteration) ([177ae90](https://github.com/spiandorello/rrule/commit/177ae9050e9d87c14633ef4d22f61a8120d894e2))
+* **rrulestr:** rewrite splitIntoLines as a single forward pass ([bff3b85](https://github.com/spiandorello/rrule/commit/bff3b8558f3891945ccea986546c811d5b1f933f))
+* **rrulestr:** rewrite splitIntoLines as a single forward pass ([65daa4a](https://github.com/spiandorello/rrule/commit/65daa4abe7ee770fcff018a82f15a70e0ee8ff2a))
+
 ## [4.0.0](https://github.com/spiandorello/rrule/compare/v3.0.0...v4.0.0) (2026-05-14)
 
 
