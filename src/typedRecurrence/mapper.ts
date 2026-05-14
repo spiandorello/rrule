@@ -52,10 +52,7 @@ function resolveOptions(
   }
 }
 
-function untilStringToDate(
-  ymd: string,
-  mode: TypedRecurrenceUntilMode
-): Date {
+function untilStringToDate(ymd: string, mode: TypedRecurrenceUntilMode): Date {
   switch (mode) {
     case 'instant':
       return ymdToUtcMidnight(ymd)

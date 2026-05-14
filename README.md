@@ -362,12 +362,12 @@ formatUtcDateToYmd(new Date('2026-05-12T10:00:00Z'))
 
 #### Options summary
 
-| Option           | Value                          | Effect                                                                 |
-| ---------------- | ------------------------------ | ---------------------------------------------------------------------- |
-| `includeDtstart` | `false` (default)              | When `true`, prepends `DTSTART:...` to the serialized output           |
-| `untilMode`      | `'inclusive-day-utc'` (default) | Anchor `until` at 23:59:59 UTC on the UNTIL calendar day. TZ-independent, roundtrip-clean |
-| `untilMode`      | `'inclusive-day'` (deprecated) | Anchor `until` at 23:59:59 in the runtime's local TZ. Depends on `process.env.TZ` and breaks roundtrip on non-UTC hosts. Emits a one-time deprecation warning |
-| `untilMode`      | `'instant'`                    | Anchor `until` at 00:00:00 UTC on the UNTIL calendar day. TZ-independent but excludes events later in the UNTIL day |
+| Option           | Value                           | Effect                                                                                                                                                        |
+| ---------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `includeDtstart` | `false` (default)               | When `true`, prepends `DTSTART:...` to the serialized output                                                                                                  |
+| `untilMode`      | `'inclusive-day-utc'` (default) | Anchor `until` at 23:59:59 UTC on the UNTIL calendar day. TZ-independent, roundtrip-clean                                                                     |
+| `untilMode`      | `'inclusive-day'` (deprecated)  | Anchor `until` at 23:59:59 in the runtime's local TZ. Depends on `process.env.TZ` and breaks roundtrip on non-UTC hosts. Emits a one-time deprecation warning |
+| `untilMode`      | `'instant'`                     | Anchor `until` at 00:00:00 UTC on the UNTIL calendar day. TZ-independent but excludes events later in the UNTIL day                                           |
 
 `'inclusive-day-utc'` interprets the `until` string as a UTC calendar day, so
 callers in a timezone ahead of UTC who need local-day semantics should
