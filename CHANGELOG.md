@@ -1,5 +1,31 @@
 # Changelog
 
+## [4.0.0](https://github.com/spiandorello/rrule/compare/v3.0.0...v4.0.0) (2026-05-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **build:** the UMD bundle is gone. Browser consumers loading the library via a `<script>` tag must switch to a bundler or an ESM-capable CDN. Node CJS (`require('@spiandorello/rrulejs')`) and Node ESM (`import { RRule } from '@spiandorello/rrulejs'`) are unaffected — the new `exports` map keeps both entry points resolving to working builds. ([#46](https://github.com/spiandorello/rrule/issues/46))
+
+
+### Build
+
+* dual tsc emit (ESM + CJS), kill webpack ([#46](https://github.com/spiandorello/rrule/issues/46)) ([59b7c24](https://github.com/spiandorello/rrule/commit/59b7c244060da6f51a74e7f24ceb24558db2d28e))
+
+
+### Code Refactoring
+
+* **helpers:** tighten `repeat<T>()` signature with overloads (closes [#31](https://github.com/spiandorello/rrule/issues/31)) ([35419c0](https://github.com/spiandorello/rrule/commit/35419c0b596da375f658ef737ed293a20e489449))
+* **strict:** narrow `IterArgs` per-method to drop 9 `@ts-expect-error` ([5163c09](https://github.com/spiandorello/rrule/commit/5163c09b596da375f658ef737ed293a20e489449))
+* **strict:** remove 4 narrow `@ts-expect-error` in options/parser layer ([144e824](https://github.com/spiandorello/rrule/commit/144e824a5c83b04ff76bf225562db1b6f412f506))
+* **strict:** remove 11 `@ts-expect-error` in tests via real guards ([49e6434](https://github.com/spiandorello/rrule/commit/49e6434fc9a1748478cb185e076ee80a00ef06da))
+* **strict:** retype `ToText.options` as `ParsedOptions` to drop 39 `@ts-expect-error` ([4fd6db1](https://github.com/spiandorello/rrule/commit/4fd6db122106e9cfc15f345e0a8032e626baa9c9))
+
+
+### Miscellaneous
+
+* drop Node 20 from CI test matrix (post-LTS) ([e4aa426](https://github.com/spiandorello/rrule/commit/e4aa426))
+
 ## [3.0.0](https://github.com/spiandorello/rrule/compare/v2.9.1...v3.0.0) (2026-05-12)
 
 
