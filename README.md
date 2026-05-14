@@ -287,18 +287,20 @@ const recurrence: Recurrence = {
 const dtstart = new Date('2026-05-12T18:00:00-03:00')
 
 recurrenceToRRuleString(recurrence, dtstart)
-// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z'
+// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
 ```
 
 `INTERVAL=1` is omitted from the output, and the default `UNTIL` mode
-(`inclusive-day`) anchors the end to 23:59:59 on the dtstart's local day —
-so an event scheduled later in the day on `2026-12-31` is still included.
+(`inclusive-day-utc`) anchors the end to 23:59:59 UTC on the UNTIL calendar
+day — so an event scheduled later in the day on `2026-12-31` is still
+included, and the serialized bytes are identical regardless of the runtime's
+timezone.
 
 #### Build a fully serialized rule (with DTSTART)
 
 ```ts
 recurrenceToRRuleString(recurrence, dtstart, { includeDtstart: true })
-// → 'DTSTART:20260512T210000Z\nRRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z'
+// → 'DTSTART:20260512T210000Z\nRRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
 ```
 
 #### Treat UNTIL as a UTC instant instead of a calendar day
@@ -360,11 +362,36 @@ formatUtcDateToYmd(new Date('2026-05-12T10:00:00Z'))
 
 #### Options summary
 
-| Option           | Default           | Effect                                                       |
-| ---------------- | ----------------- | ------------------------------------------------------------ |
-| `includeDtstart` | `false`           | When `true`, prepends `DTSTART:...` to the serialized output |
-| `untilMode`      | `'inclusive-day'` | Convert `until` to end-of-day in dtstart's local TZ          |
-| `untilMode`      | `'instant'`       | Convert `until` to midnight UTC                              |
+| Option           | Value                          | Effect                                                                 |
+| ---------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| `includeDtstart` | `false` (default)              | When `true`, prepends `DTSTART:...` to the serialized output           |
+| `untilMode`      | `'inclusive-day-utc'` (default) | Anchor `until` at 23:59:59 UTC on the UNTIL calendar day. TZ-independent, roundtrip-clean |
+| `untilMode`      | `'inclusive-day'` (deprecated) | Anchor `until` at 23:59:59 in the runtime's local TZ. Depends on `process.env.TZ` and breaks roundtrip on non-UTC hosts. Emits a one-time deprecation warning |
+| `untilMode`      | `'instant'`                    | Anchor `until` at 00:00:00 UTC on the UNTIL calendar day. TZ-independent but excludes events later in the UNTIL day |
+
+`'inclusive-day-utc'` interprets the `until` string as a UTC calendar day, so
+callers in a timezone ahead of UTC who need local-day semantics should
+pre-convert their `until` value before passing it to `Recurrence`.
+
+#### Migrating from 4.x
+
+Starting in 5.x, `untilMode` defaults to `'inclusive-day-utc'` instead of
+`'inclusive-day'`. The serialized output is now identical across hosts:
+
+```
+// 4.x on TZ=America/Sao_Paulo:
+RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z
+
+// 5.x (any TZ):
+RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z
+```
+
+Callers who relied on the legacy runtime-TZ behavior can pass
+`untilMode: 'inclusive-day'` explicitly. That mode is now deprecated and
+emits a one-time `console.warn`; set `SPIANDORELLO_RRULEJS_NO_WARN=1` in the
+environment to silence it. See
+[issue #61](https://github.com/spiandorello/rrulejs/issues/61) for the
+background.
 
 ### API
 
