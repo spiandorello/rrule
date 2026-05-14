@@ -19,3 +19,4 @@ ignore:
   - 'test/'
   - 'node_modules/'
   - '.github/'
+  - 'src/**/types.ts'
