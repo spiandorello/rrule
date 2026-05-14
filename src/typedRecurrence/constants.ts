@@ -52,5 +52,5 @@ export const WEEKDAY_INDEX_TO_STR: RecurrenceWeekday[] = [
 
 export const DEFAULT_TYPED_OPTIONS: Required<TypedRecurrenceOptions> = {
   includeDtstart: false,
-  untilMode: 'inclusive-day',
+  untilMode: 'inclusive-day-utc',
 }

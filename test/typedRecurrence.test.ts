@@ -9,8 +9,7 @@ import {
   rrulestr,
   rruleStringToRecurrence,
 } from '../src'
-import { timeToUntilString } from '../src/dateutil'
-import { ymdEndOfDayLocal } from '../src/typedRecurrence/helpers'
+import { __resetDeprecationStateForTests } from '../src/typedRecurrence/mapper'
 
 describe('parseYmdToUtcEndOfDay', () => {
   it('returns UTC end of day for a valid YMD', () => {
@@ -66,11 +65,8 @@ describe('recurrenceToRRuleString', () => {
       byWeekday: ['TU', 'TH'],
       end: { type: 'until', until: '2026-12-31' },
     }
-    const expectedUntil = timeToUntilString(
-      ymdEndOfDayLocal('2026-12-31').valueOf()
-    )
     expect(recurrenceToRRuleString(recurrence, dtstart)).toBe(
-      `RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=${expectedUntil}`
+      'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
     )
   })
 
@@ -304,6 +300,147 @@ describe('round-trip', () => {
     const str = recurrenceToRRuleString(original, dtstart)
     const back = rruleStringToRecurrence(str)
     expect(back).toEqual(original)
+  })
+
+  it('preserves UNTIL recurrence (deterministic across runtime TZ)', () => {
+    const original: Recurrence = {
+      frequency: 'WEEKLY',
+      byWeekday: ['TU'],
+      end: { type: 'until', until: '2026-12-31' },
+    }
+    const str = recurrenceToRRuleString(original, dtstart)
+    const back = rruleStringToRecurrence(str)
+    expect(back).toEqual(original)
+  })
+})
+
+// Node on Linux/macOS picks up process.env.TZ on each new Date() call, so we
+// can flip TZ between tests without resetting any cache. Windows' libc does
+// not honour TZ the same way, so we skip there.
+const describeTzIndependence =
+  process.platform === 'win32' ? describe.skip : describe
+
+describeTzIndependence('untilMode=inclusive-day-utc TZ independence', () => {
+  describe.each(['UTC', 'America/Sao_Paulo', 'Pacific/Auckland'])(
+    'TZ=%s',
+    (tz) => {
+      let savedTz: string | undefined
+
+      beforeEach(() => {
+        savedTz = process.env.TZ
+        process.env.TZ = tz
+      })
+
+      afterEach(() => {
+        if (savedTz === undefined) {
+          delete process.env.TZ
+        } else {
+          process.env.TZ = savedTz
+        }
+      })
+
+      it('serializes UNTIL deterministically regardless of TZ', () => {
+        const out = recurrenceToRRuleString(
+          {
+            frequency: 'WEEKLY',
+            byWeekday: ['TU'],
+            end: { type: 'until', until: '2026-12-31' },
+          },
+          new Date(Date.UTC(2026, 3, 14, 8, 0, 0))
+        )
+        expect(out).toBe(
+          'RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20261231T235959Z'
+        )
+      })
+    }
+  )
+})
+
+describe('inclusive-day deprecation warning', () => {
+  const dtstart = new Date(Date.UTC(2026, 4, 12, 21, 0, 0))
+  let warnSpy: jest.SpyInstance
+  let savedNoWarn: string | undefined
+
+  beforeEach(() => {
+    __resetDeprecationStateForTests()
+    savedNoWarn = process.env.SPIANDORELLO_RRULEJS_NO_WARN
+    delete process.env.SPIANDORELLO_RRULEJS_NO_WARN
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    warnSpy.mockRestore()
+    if (savedNoWarn === undefined) {
+      delete process.env.SPIANDORELLO_RRULEJS_NO_WARN
+    } else {
+      process.env.SPIANDORELLO_RRULEJS_NO_WARN = savedNoWarn
+    }
+  })
+
+  it("warns once when untilMode='inclusive-day' is passed", () => {
+    recurrenceToRRuleString(
+      {
+        frequency: 'WEEKLY',
+        byWeekday: ['TU'],
+        end: { type: 'until', until: '2026-12-31' },
+      },
+      dtstart,
+      { untilMode: 'inclusive-day' }
+    )
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    const message = warnSpy.mock.calls[0][0] as string
+    expect(message).toContain('deprecated')
+    expect(message).toContain('inclusive-day-utc')
+  })
+
+  it('warns only once across multiple calls in the same process', () => {
+    const recurrence: Recurrence = {
+      frequency: 'WEEKLY',
+      byWeekday: ['TU'],
+      end: { type: 'until', until: '2026-12-31' },
+    }
+    recurrenceToRRuleString(recurrence, dtstart, { untilMode: 'inclusive-day' })
+    recurrenceToRRuleString(recurrence, dtstart, { untilMode: 'inclusive-day' })
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses the warning when SPIANDORELLO_RRULEJS_NO_WARN=1', () => {
+    process.env.SPIANDORELLO_RRULEJS_NO_WARN = '1'
+    recurrenceToRRuleString(
+      {
+        frequency: 'WEEKLY',
+        byWeekday: ['TU'],
+        end: { type: 'until', until: '2026-12-31' },
+      },
+      dtstart,
+      { untilMode: 'inclusive-day' }
+    )
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it('does not warn when untilMode is omitted (default is inclusive-day-utc)', () => {
+    recurrenceToRRuleString(
+      {
+        frequency: 'WEEKLY',
+        byWeekday: ['TU'],
+        end: { type: 'until', until: '2026-12-31' },
+      },
+      dtstart
+    )
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it("does not warn when untilMode='inclusive-day-utc' is passed explicitly", () => {
+    recurrenceToRRuleString(
+      {
+        frequency: 'WEEKLY',
+        byWeekday: ['TU'],
+        end: { type: 'until', until: '2026-12-31' },
+      },
+      dtstart,
+      { untilMode: 'inclusive-day-utc' }
+    )
+    expect(warnSpy).not.toHaveBeenCalled()
   })
 })
 

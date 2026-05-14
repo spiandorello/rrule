@@ -65,3 +65,10 @@ export function ymdToUtcMidnight(ymd: string): Date {
   const [year, month, day] = parseYmdParts(ymd)
   return new Date(Date.UTC(year, month - 1, day, 0, 0, 0))
 }
+
+// Internal: end-of-day in UTC on the given calendar day. Roundtrip-clean and
+// TZ-independent; thin alias over the public `parseYmdToUtcEndOfDay` to keep
+// naming symmetry with `ymdEndOfDayLocal` and `ymdToUtcMidnight`.
+export function ymdEndOfDayUtc(ymd: string): Date {
+  return parseYmdToUtcEndOfDay(ymd)
+}

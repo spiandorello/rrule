@@ -7,16 +7,62 @@ import {
   FREQUENCY_MAP,
   WEEKDAY_MAP,
 } from './constants.js'
-import { Recurrence, TypedRecurrenceOptions } from './types.js'
-import { ymdEndOfDayLocal, ymdToUtcMidnight } from './helpers.js'
+import {
+  Recurrence,
+  TypedRecurrenceOptions,
+  TypedRecurrenceUntilMode,
+} from './types.js'
+import {
+  ymdEndOfDayLocal,
+  ymdEndOfDayUtc,
+  ymdToUtcMidnight,
+} from './helpers.js'
+
+let warnedInclusiveDay = false
+
+const INCLUSIVE_DAY_DEPRECATION_MESSAGE =
+  "[@spiandorello/rrulejs] untilMode='inclusive-day' is deprecated and will be removed in a future major. It depends on runtime TZ and breaks roundtrip on non-UTC hosts. Switch to 'inclusive-day-utc' (now the default) or remove the explicit untilMode. Silence with SPIANDORELLO_RRULEJS_NO_WARN=1."
+
+function maybeWarnInclusiveDay(
+  untilMode: TypedRecurrenceUntilMode | undefined
+): void {
+  if (untilMode !== 'inclusive-day') return
+  if (warnedInclusiveDay) return
+  if (process.env.SPIANDORELLO_RRULEJS_NO_WARN === '1') return
+  warnedInclusiveDay = true
+  console.warn(INCLUSIVE_DAY_DEPRECATION_MESSAGE)
+}
+
+/**
+ * Internal: reset the one-time deprecation-warning flag. Intended for tests
+ * only — not re-exported from the package entry point.
+ */
+export function __resetDeprecationStateForTests(): void {
+  warnedInclusiveDay = false
+}
 
 function resolveOptions(
   options?: TypedRecurrenceOptions
 ): Required<TypedRecurrenceOptions> {
+  maybeWarnInclusiveDay(options?.untilMode)
   return {
     includeDtstart:
       options?.includeDtstart ?? DEFAULT_TYPED_OPTIONS.includeDtstart,
     untilMode: options?.untilMode ?? DEFAULT_TYPED_OPTIONS.untilMode,
+  }
+}
+
+function untilStringToDate(
+  ymd: string,
+  mode: TypedRecurrenceUntilMode
+): Date {
+  switch (mode) {
+    case 'instant':
+      return ymdToUtcMidnight(ymd)
+    case 'inclusive-day':
+      return ymdEndOfDayLocal(ymd)
+    case 'inclusive-day-utc':
+      return ymdEndOfDayUtc(ymd)
   }
 }
 
@@ -72,10 +118,7 @@ function buildPartialOptions(
 
   const end = recurrence.end
   if (end && end.type === 'until') {
-    partial.until =
-      resolved.untilMode === 'instant'
-        ? ymdToUtcMidnight(end.until)
-        : ymdEndOfDayLocal(end.until)
+    partial.until = untilStringToDate(end.until, resolved.untilMode)
   } else if (end && end.type === 'count') {
     if (!Number.isInteger(end.count) || end.count < 1) {
       throw new Error(
@@ -104,7 +147,8 @@ export function recurrenceToRRuleString(
   options?: TypedRecurrenceOptions
 ): string {
   const resolved = resolveOptions(options)
-  const rrule = recurrenceToRRule(recurrence, dtstart, options)
+  const partial = buildPartialOptions(recurrence, dtstart, resolved)
+  const rrule = new RRule(partial)
   const full = rrule.toString()
 
   if (resolved.includeDtstart) {
