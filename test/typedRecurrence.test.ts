@@ -348,9 +348,7 @@ describeTzIndependence('untilMode=inclusive-day-utc TZ independence', () => {
           },
           new Date(Date.UTC(2026, 3, 14, 8, 0, 0))
         )
-        expect(out).toBe(
-          'RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20261231T235959Z'
-        )
+        expect(out).toBe('RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20261231T235959Z')
       })
     }
   )
