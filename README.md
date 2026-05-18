@@ -1,6 +1,6 @@
-# rrule.js
+# @spiandorello/rrulejs
 
-**Library for working with recurrence rules for calendar dates.**
+**Hardened fork of [`rrule`](https://github.com/jkbrzt/rrule) — RFC 5545 recurrence rules for JavaScript/TypeScript, with a DoS-resistant parser, iteration caps, and a typed `Recurrence` API with inclusive-day UTC `UNTIL` semantics.**
 
 [![NPM version][npm-image]][npm-url]
 [![Build Status][ci-image]][ci-url]
@@ -8,43 +8,168 @@
 [![codecov][codecov-image]][codecov-url]
 [![License][license-image]][license-url]
 
-rrule.js supports recurrence rules as defined in the [iCalendar
-RFC](https://tools.ietf.org/html/rfc5545), with a few important
-[differences](#differences-from-icalendar-rfc). It is a partial port of the
-`rrule` module from the excellent
-[python-dateutil](http://labix.org/python-dateutil/) library. On top of
-that, it supports parsing and serialization of recurrence rules from and
-to natural language.
+## What this fork adds over upstream `rrule`
 
----
+- **DoS-resistant parser.** Oversized RRULE strings (default cap: 64 KiB), invalid `interval`, and `BYSETPOS` arrays longer than 732 entries are rejected before reaching the iterator.
+- **Iteration cap.** `.all()` / `.count()` / `.between()` throw `RRuleIterationLimitError` after 100 000 accepted dates (configurable). Backstops infinite rules that omit `COUNT` and `UNTIL`.
+- **Dual ESM + CJS distribution.** Proper `exports` map with separate `dist/esm` and `dist/cjs` builds and matching `.d.ts` for each. The UMD bundle was removed in 4.x — browser consumers load via a bundler or an ESM-capable CDN.
+- **Typed Recurrence API.** A plain-string `Recurrence` type that round-trips to an RFC 5545 `RRULE:` string, with deterministic inclusive-day-UTC `UNTIL` semantics by default.
+- **TZID iteration ~28× faster.** `Intl.DateTimeFormat` is now cached per timezone — a 5-year `DAILY` `.between()` over TZID went from ~374 ms to ~13 ms.
 
-### Quick Start
+See [`SECURITY.md`](./SECURITY.md) for the full hardening matrix and threat model.
 
-- [Demo app](http://jkbrzt.github.io/rrule/)
-- # For contributors and maintainers: the code for the demo app is only on `gh-pages` branch
+## Table of contents
 
-#### Client Side
+- [Requirements](#requirements)
+- [Install](#install)
+- [Quick start — Typed Recurrence API](#quick-start--typed-recurrence-api)
+- [Quick start — RRule (low-level)](#quick-start--rrule-low-level)
+- [Important: use UTC dates](#important-use-utc-dates)
+- [Timezone support](#timezone-support)
+- [API](#api)
+  - [`RRule` constructor](#rrule-constructor)
+  - [Instance properties](#instance-properties)
+  - [Occurrence retrieval methods](#occurrence-retrieval-methods)
+  - [iCalendar RFC string methods](#icalendar-rfc-string-methods)
+  - [Natural language text methods](#natural-language-text-methods)
+  - [`RRuleSet`](#rruleset)
+  - [`rrulestr`](#rrulestr-1)
+  - [Hardening guards](#hardening-guards)
+- [Migration](#migration)
+- [Differences from iCalendar RFC](#differences-from-icalendar-rfc)
+- [Development](#development)
+- [Authors](#authors)
+- [Related projects](#related-projects)
+
+## Requirements
+
+- **Node.js ≥ 20** (declared in `engines.node`). The CI matrix tracks the active LTS line.
+- **Modern JavaScript runtime** with the [`Intl` API](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl) available. The `tzid` option uses `Intl.DateTimeFormat` to resolve IANA timezones. If you must support an environment without `Intl`, ship a [polyfill](https://formatjs.io/docs/polyfills/).
+- **Browser usage:** load through a bundler (Vite, esbuild, webpack, …) or an ESM-capable CDN. There is no UMD bundle.
+
+## Install
 
 ```bash
-$ yarn add rrule
-```
-
-#### Server Side
-
-Includes optional TypeScript types
-
-```bash
-$ yarn add rrule
+npm install @spiandorello/rrulejs
 # or
-$ npm install rrule
+yarn add @spiandorello/rrulejs
 ```
 
-#### Usage
+TypeScript types ship in the package — no `@types/...` companion needed.
 
-**RRule:**
+## Quick start — Typed Recurrence API
 
-```es6
-import { datetime, RRule, RRuleSet, rrulestr } from 'rrule'
+The typed API is the recommended entry point for new code. `Recurrence` exchanges numeric enums and `Weekday` instances for plain string literals, treats `UNTIL` as an inclusive calendar day in UTC by default, and round-trips cleanly to and from an RFC 5545 `RRULE:` string.
+
+```ts
+import {
+  Recurrence,
+  recurrenceToRRule,
+  recurrenceToRRuleString,
+  rruleStringToRecurrence,
+  parseYmdToUtcEndOfDay,
+  formatUtcDateToYmd,
+} from '@spiandorello/rrulejs'
+```
+
+### Build an RRULE string
+
+```ts
+const recurrence: Recurrence = {
+  frequency: 'WEEKLY',
+  interval: 1,
+  byWeekday: ['TU', 'TH'],
+  end: { type: 'until', until: '2026-12-31' },
+}
+
+const dtstart = new Date('2026-05-12T18:00:00-03:00')
+
+recurrenceToRRuleString(recurrence, dtstart)
+// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
+```
+
+`INTERVAL=1` is omitted from the output, and the default `untilMode` (`'inclusive-day-utc'`) anchors the end to 23:59:59 UTC on the `UNTIL` calendar day. The serialized bytes are identical regardless of the runtime's timezone, and an event scheduled later in the day on `2026-12-31` is still included.
+
+### Build a fully serialized rule (with DTSTART)
+
+```ts
+recurrenceToRRuleString(recurrence, dtstart, { includeDtstart: true })
+// → 'DTSTART:20260512T210000Z\nRRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
+```
+
+### Treat UNTIL as a UTC instant instead of a calendar day
+
+```ts
+recurrenceToRRuleString(recurrence, dtstart, { untilMode: 'instant' })
+// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T000000Z'
+```
+
+### Use COUNT or no end at all
+
+```ts
+recurrenceToRRuleString(
+  {
+    frequency: 'WEEKLY',
+    byWeekday: ['MO', 'WE', 'FR'],
+    end: { type: 'count', count: 10 },
+  },
+  dtstart
+)
+// → 'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10'
+
+recurrenceToRRuleString({ frequency: 'DAILY', end: { type: 'never' } }, dtstart)
+// → 'RRULE:FREQ=DAILY'
+```
+
+### Parse an RRULE string back to `Recurrence`
+
+```ts
+rruleStringToRecurrence('RRULE:FREQ=WEEKLY;BYDAY=TU,TH;COUNT=10')
+// → {
+//     frequency: 'WEEKLY',
+//     byWeekday: ['TU', 'TH'],
+//     end: { type: 'count', count: 10 },
+//   }
+```
+
+Unsupported features (`FREQ=HOURLY/MINUTELY/SECONDLY`, `BYSETPOS`, `BYHOUR`, `BYMINUTE`, `BYSECOND`, `BYYEARDAY`, `BYWEEKNO`, `WKST`, `BYDAY` with an nth prefix such as `-1MO`, multi-value `BYMONTH` or `BYMONTHDAY`) throw a descriptive error rather than silently dropping data.
+
+### Hand off to the existing `RRule` API
+
+```ts
+const rule = recurrenceToRRule(recurrence, dtstart)
+rule.all() // Date[]
+rule.between(start, end)
+```
+
+### Date helpers
+
+```ts
+parseYmdToUtcEndOfDay('2026-12-31')
+// → 2026-12-31T23:59:59.000Z
+
+formatUtcDateToYmd(new Date('2026-05-12T10:00:00Z'))
+// → '2026-05-12'
+```
+
+### `untilMode` options
+
+| Value                             | Effect                                                                                                                                                                                                                 |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `'inclusive-day-utc'` _(default)_ | Anchors `until` at 23:59:59 UTC on the UNTIL calendar day. TZ-independent and roundtrip-clean.                                                                                                                         |
+| `'instant'`                       | Anchors `until` at 00:00:00 UTC on the UNTIL calendar day. TZ-independent but excludes events later in the UNTIL day.                                                                                                  |
+| `'inclusive-day'` _(deprecated)_  | Anchors `until` at 23:59:59 in the runtime's local timezone. Depends on `process.env.TZ` and breaks roundtrip on non-UTC hosts. Emits one `console.warn` per process; set `SPIANDORELLO_RRULEJS_NO_WARN=1` to silence. |
+
+`'inclusive-day-utc'` interprets the `until` string as a UTC calendar day, so callers in a timezone ahead of UTC who need local-day semantics should pre-convert their `until` value before passing it to `Recurrence`.
+
+## Quick start — RRule (low-level)
+
+The low-level `RRule` API mirrors the upstream `rrule` shape. Use it when you need direct control over RFC 5545 fields the typed API does not expose (`BYSETPOS`, `BYHOUR`, nth-weekday, `WKST`, …) or when you are porting existing code.
+
+### `RRule`
+
+```ts
+import { datetime, RRule, RRuleSet, rrulestr } from '@spiandorello/rrulejs'
 
 // Create a rule:
 const rule = new RRule({
@@ -52,40 +177,40 @@ const rule = new RRule({
   interval: 5,
   byweekday: [RRule.MO, RRule.FR],
   dtstart: datetime(2012, 2, 1, 10, 30),
-  until: datetime(2012, 12, 31)
+  until: datetime(2012, 12, 31),
 })
 
 // Get all occurrence dates (Date instances):
 rule.all()
-[ '2012-02-03T10:30:00.000Z',
-  '2012-03-05T10:30:00.000Z',
-  '2012-03-09T10:30:00.000Z',
-  '2012-04-09T10:30:00.000Z',
-  '2012-04-13T10:30:00.000Z',
-  '2012-05-14T10:30:00.000Z',
-  '2012-05-18T10:30:00.000Z',
-
- /* … */]
+// → [
+//     2012-02-03T10:30:00.000Z,
+//     2012-03-05T10:30:00.000Z,
+//     2012-03-09T10:30:00.000Z,
+//     2012-04-09T10:30:00.000Z,
+//     2012-04-13T10:30:00.000Z,
+//     2012-05-14T10:30:00.000Z,
+//     2012-05-18T10:30:00.000Z,
+//     /* … */
+//   ]
 
 // Get a slice:
 rule.between(datetime(2012, 8, 1), datetime(2012, 9, 1))
-['2012-08-27T10:30:00.000Z',
- '2012-08-31T10:30:00.000Z']
+// → [2012-08-27T10:30:00.000Z, 2012-08-31T10:30:00.000Z]
 
 // Get an iCalendar RRULE string representation:
 // The output can be used with RRule.fromString().
 rule.toString()
-"DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;INTERVAL=5;UNTIL=20130130T230000Z;BYDAY=MO,FR"
+// → 'DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;INTERVAL=5;UNTIL=20130130T230000Z;BYDAY=MO,FR'
 
 // Get a human-friendly text representation:
 // The output can be used with RRule.fromText().
 rule.toText()
-"every 5 weeks on Monday, Friday until January 31, 2013"
+// → 'every 5 weeks on Monday, Friday until January 31, 2013'
 ```
 
-**RRuleSet:**
+### `RRuleSet`
 
-```js
+```ts
 const rruleSet = new RRuleSet()
 
 // Add a rrule to rruleSet
@@ -103,7 +228,7 @@ rruleSet.rdate(datetime(2012, 7, 1, 10, 30))
 // Add another date to rruleSet
 rruleSet.rdate(datetime(2012, 7, 2, 10, 30))
 
-// Add a exclusion rrule to rruleSet
+// Add an exclusion rrule to rruleSet
 rruleSet.exrule(
   new RRule({
     freq: RRule.MONTHLY,
@@ -112,39 +237,36 @@ rruleSet.exrule(
   })
 )
 
-// Add a exclusion date to rruleSet
+// Add an exclusion date to rruleSet
 rruleSet.exdate(datetime(2012, 5, 1, 10, 30))
 
 // Get all occurrence dates (Date instances):
-rruleSet.all()[
-  ('2012-02-01T10:30:00.000Z',
-  '2012-05-01T10:30:00.000Z',
-  '2012-07-01T10:30:00.000Z',
-  '2012-07-02T10:30:00.000Z')
-]
+rruleSet.all()
+// → [
+//     2012-02-01T10:30:00.000Z,
+//     2012-05-01T10:30:00.000Z,
+//     2012-07-01T10:30:00.000Z,
+//     2012-07-02T10:30:00.000Z,
+//   ]
 
 // Get a slice:
-rruleSet.between(datetime(2012, 2, 1), datetime(2012, 6, 2))[
-  ('2012-05-01T10:30:00.000Z', '2012-07-01T10:30:00.000Z')
-]
+rruleSet.between(datetime(2012, 2, 1), datetime(2012, 6, 2))
+// → [2012-05-01T10:30:00.000Z]
 
-// To string
-rruleSet.valueOf()[
-  ('DTSTART:20120201T023000Z',
-  'RRULE:FREQ=MONTHLY;COUNT=5',
-  'RDATE:20120701T023000Z,20120702T023000Z',
-  'EXRULE:FREQ=MONTHLY;COUNT=2',
-  'EXDATE:20120601T023000Z')
-]
-
-// To string
-rruleSet.toString()
-;('["DTSTART:20120201T023000Z","RRULE:FREQ=MONTHLY;COUNT=5","RDATE:20120701T023000Z,20120702T023000Z","EXRULE:FREQ=MONTHLY;COUNT=2","EXDATE:20120601T023000Z"]')
+// Serialize back to RFC lines:
+rruleSet.valueOf()
+// → [
+//     'DTSTART:20120201T103000Z',
+//     'RRULE:FREQ=MONTHLY;COUNT=5',
+//     'RDATE:20120701T103000Z,20120702T103000Z',
+//     'EXRULE:FREQ=MONTHLY;COUNT=2',
+//     'EXDATE:20120501T103000Z',
+//   ]
 ```
 
-**rrulestr:**
+### `rrulestr`
 
-```js
+```ts
 // Parse a RRule string, return a RRule object
 rrulestr('DTSTART:20120201T023000Z\nRRULE:FREQ=MONTHLY;COUNT=5')
 
@@ -155,228 +277,382 @@ rrulestr('DTSTART:20120201T023000Z\nRRULE:FREQ=MONTHLY;COUNT=5', {
 
 // Parse a RRuleSet string, return a RRuleSet object
 rrulestr(
-  'DTSTART:20120201T023000Z\nRRULE:FREQ=MONTHLY;COUNT=5\nRDATE:20120701T023000Z,20120702T023000Z\nEXRULE:FREQ=MONTHLY;COUNT=2\nEXDATE:20120601T023000Z'
+  'DTSTART:20120201T023000Z\n' +
+    'RRULE:FREQ=MONTHLY;COUNT=5\n' +
+    'RDATE:20120701T023000Z,20120702T023000Z\n' +
+    'EXRULE:FREQ=MONTHLY;COUNT=2\n' +
+    'EXDATE:20120601T023000Z'
 )
 ```
 
-### Important: Use UTC dates
+## Important: use UTC dates
 
-Dates in JavaScript are tricky. `RRule` tries to support as much flexibility as possible without adding any large required 3rd party dependencies, but that means we also have some special rules.
+Dates in JavaScript are tricky. `RRule` tries to support as much flexibility as possible without adding any large required 3rd-party dependencies, but that means we also have some special rules.
 
-By default, `RRule` deals in ["floating" times or UTC timezones](https://tools.ietf.org/html/rfc5545#section-3.2.19). If you want results in a specific timezone, `RRule` also provides [timezone support](#timezone-support). Either way, JavaScript's built-in "timezone" offset tends to just get in the way, so this library simply doesn't use it at all. All times are returned with zero offset, as though it didn't exist in JavaScript.
+By default, `RRule` deals in [floating times or UTC timezones](https://tools.ietf.org/html/rfc5545#section-3.2.19). If you want results in a specific timezone, `RRule` also provides [timezone support](#timezone-support). Either way, JavaScript's built-in "timezone" offset tends to just get in the way, so this library does not use it at all. All times are returned with zero offset, as though it did not exist in JavaScript.
 
-**THE BOTTOM LINE: Returned "UTC" dates are always meant to be interpreted as dates in your local timezone. This may mean you have to do additional conversion to get the "correct" local time with offset applied.**
+**THE BOTTOM LINE:** returned "UTC" dates are always meant to be interpreted as dates in your local timezone. This may mean you have to do additional conversion to get the "correct" local time with offset applied.
 
-For this reason, it is highly recommended to use timestamps in UTC eg. `new Date(Date.UTC(...))`. Returned dates will likewise be in UTC (except on Chrome, which always returns dates with a timezone offset). It's recommended to use the provided `datetime()` helper, which
-creates dates in the correct format using a 1-based month.
+For this reason, it is highly recommended to use timestamps in UTC, e.g. `new Date(Date.UTC(...))`. Returned dates will likewise be in UTC (except on Chrome, which always returns dates with a timezone offset). It is recommended to use the provided `datetime()` helper, which creates dates in the correct format using a 1-based month.
 
 For example:
 
 ```ts
 // local machine zone is America/Los_Angeles
 const rule = RRule.fromString(
-  "DTSTART;TZID=America/Denver:20181101T190000;\n"
-  + "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,TH;INTERVAL=1;COUNT=3"
+  'DTSTART;TZID=America/Denver:20181101T190000;\n' +
+    'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,TH;INTERVAL=1;COUNT=3'
 )
 rule.all()
-
-[ 2018-11-01T18:00:00.000Z,
-  2018-11-05T18:00:00.000Z,
-  2018-11-07T18:00:00.000Z ]
+// → [
+//     2018-11-01T18:00:00.000Z,
+//     2018-11-05T18:00:00.000Z,
+//     2018-11-07T18:00:00.000Z,
+//   ]
 // Even though the given offset is `Z` (UTC), these are local times, not UTC times.
-// Each of these this is the correct local Pacific time of each recurrence in
+// Each of these is the correct local Pacific time of each recurrence in
 // America/Los_Angeles when it is 19:00 in America/Denver, including the DST shift.
 
-// You can get the local components by using the getUTC* methods eg:
-date.getUTCDate() // --> 1
-date.getUTCHours() // --> 18
+// You can get the local components by using the getUTC* methods, e.g.:
+date.getUTCDate() // → 1
+date.getUTCHours() // → 18
 ```
 
 If you want to get the same times in true UTC, you may do so (e.g., using [Luxon](https://moment.github.io/luxon/#/)):
 
 ```ts
-rule.all().map(date =>
-DateTime.fromJSDate(date)
-  .toUTC()
-  .setZone('local', { keepLocalTime: true })
-  .toJSDate()
-)
-
-[ 2018-11-02T01:00:00.000Z,
-  2018-11-06T02:00:00.000Z,
-  2018-11-08T02:00:00.000Z ]
-// These times are in true UTC; you can see the hours shift
+rule
+  .all()
+  .map((date) =>
+    DateTime.fromJSDate(date)
+      .toUTC()
+      .setZone('local', { keepLocalTime: true })
+      .toJSDate()
+  )
+// → [
+//     2018-11-02T01:00:00.000Z,
+//     2018-11-06T02:00:00.000Z,
+//     2018-11-08T02:00:00.000Z,
+//   ]
+// These times are in true UTC; you can see the hours shift.
 ```
 
-For more examples see
-[python-dateutil](http://labix.org/python-dateutil/) documentation.
+For more examples see the [python-dateutil](http://labix.org/python-dateutil/) documentation.
 
----
+## Timezone support
 
-### Timezone Support
-
-Rrule also supports use of the `TZID` parameter in the
-[RFC](https://tools.ietf.org/html/rfc5545#section-3.2.19) using the
-[Intl API](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl).
-Support matrix for the Intl API applies. If you need to support additional environments,
-please consider using a [polyfill](https://formatjs.io/docs/polyfills/).
+`RRule` supports the `TZID` parameter in the [RFC](https://tools.ietf.org/html/rfc5545#section-3.2.19) using the [`Intl` API](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl). The support matrix for `Intl` applies. If you need to support environments without `Intl`, consider a [polyfill](https://formatjs.io/docs/polyfills/).
 
 Example with `TZID`:
 
-```js
+```ts
 new RRule({
   dtstart: datetime(2018, 2, 1, 10, 30),
   count: 1,
   tzid: 'Asia/Tokyo',
-}).all()[
-  // assuming the system timezone is set to America/Los_Angeles, you get:
-  '2018-01-31T17:30:00.000Z'
-]
-// which is the time in Los Angeles when it's 2018-02-01T10:30:00 in Tokyo.
+}).all()
+// → [2018-01-31T17:30:00.000Z]
+// assuming the system timezone is set to America/Los_Angeles —
+// the time in Los Angeles when it is 2018-02-01T10:30:00 in Tokyo.
 ```
 
-Whether or not you use the `TZID` param, make sure to only use JS `Date` objects that are
-represented in UTC to avoid unexpected timezone offsets being applied, for example:
+Whether or not you use the `tzid` param, make sure to only use JS `Date` objects represented in UTC to avoid unexpected timezone offsets being applied:
 
-```js
+```ts
 // WRONG: Will produce dates with TZ offsets added
 new RRule({
   freq: RRule.MONTHLY,
   dtstart: new Date(2018, 1, 1, 10, 30),
   until: new Date(2018, 2, 31),
-}).all()[('2018-02-01T18:30:00.000Z', '2018-03-01T18:30:00.000Z')]
+}).all()
+// → [2018-02-01T18:30:00.000Z, 2018-03-01T18:30:00.000Z]
 
 // RIGHT: Will produce dates with recurrences at the correct time
 new RRule({
   freq: RRule.MONTHLY,
   dtstart: datetime(2018, 2, 1, 10, 30),
   until: datetime(2018, 3, 31),
-}).all()[('2018-02-01T10:30:00.000Z', '2018-03-01T10:30:00.000Z')]
+}).all()
+// → [2018-02-01T10:30:00.000Z, 2018-03-01T10:30:00.000Z]
 ```
 
----
+## API
 
-### Typed Recurrence API
+### `RRule` constructor
 
-This fork ships a typed, RFC-aware companion to `RRule` aimed at API and
-frontend code. `Recurrence` exchanges numeric enums and `Weekday` instances
-for plain string literals, treats `UNTIL` as an inclusive calendar day by
-default, and round-trips cleanly to and from an RFC 5545 `RRULE:` string.
+```ts
+new RRule(options[, noCache = false])
+```
+
+The `options` argument mostly corresponds to the properties defined for `RRULE` in the iCalendar RFC. Only `freq` is required.
+
+| Option       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `freq`       | _(required)_ One of `RRule.YEARLY`, `RRule.MONTHLY`, `RRule.WEEKLY`, `RRule.DAILY`, `RRule.HOURLY`, `RRule.MINUTELY`, `RRule.SECONDLY`.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `dtstart`    | The recurrence start. Besides being the base for the recurrence, missing parameters in the final recurrence instances will also be extracted from this date. If not given, `new Date` is used. **See [Timezone support](#timezone-support).**                                                                                                                                                                                                                                                                                           |
+| `interval`   | The interval between each `freq` iteration. For example, with `RRule.YEARLY`, `interval: 2` means once every two years; with `RRule.HOURLY`, once every two hours. Default is `1`. The parser rejects non-positive or non-integer values with `Invalid interval: ...`.                                                                                                                                                                                                                                                                  |
+| `wkst`       | The week start day. Must be one of the `RRule.MO`, `RRule.TU`, `RRule.WE` constants (or an integer). Affects recurrences based on weekly periods. Default is `RRule.MO`.                                                                                                                                                                                                                                                                                                                                                                |
+| `count`      | How many occurrences will be generated.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `until`      | A `Date` instance specifying the limit of the recurrence. If a recurrence instance happens to be the same as the `Date` given here, it will be the last occurrence.                                                                                                                                                                                                                                                                                                                                                                     |
+| `tzid`       | If given, an IANA string recognized by the `Intl` API. See [Timezone support](#timezone-support).                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `bysetpos`   | An integer, or an array of integers (positive or negative). Each integer specifies an occurrence number, corresponding to the nth occurrence of the rule inside the frequency period. For example, `bysetpos: -1` combined with `RRule.MONTHLY` and `byweekday: [RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR]` resolves to the last work day of every month. The parser caps `bysetpos` arrays at 732 entries (the count of distinct legal positions, `-366..-1, 1..366`).                                                         |
+| `bymonth`    | Integer, or array of integers, meaning the months to apply the recurrence to.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `bymonthday` | Integer, or array of integers, meaning the month days to apply the recurrence to.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `byyearday`  | Integer, or array of integers, meaning the year days to apply the recurrence to.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `byweekno`   | Integer, or array of integers, meaning the week numbers to apply the recurrence to. Week numbers have the meaning described in ISO 8601: the first week of the year contains at least four days of the new year.                                                                                                                                                                                                                                                                                                                        |
+| `byweekday`  | Integer (`0 == RRule.MO`), array of integers, one of the weekday constants (`RRule.MO`, `RRule.TU`, …), or an array of these. Defines the weekdays where the recurrence will be applied. It is also possible to use an `n` argument for the weekday instances, meaning the nth occurrence of this weekday in the period. For example, with `RRule.MONTHLY` (or with `RRule.YEARLY` and `BYMONTH`), `RRule.FR.nth(+1)` or `RRule.FR.nth(-1)` selects the first or last Friday of the month. Renamed from RFC `BYDAY` to avoid ambiguity. |
+| `byhour`     | Integer, or array of integers, meaning the hours to apply the recurrence to.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `byminute`   | Integer, or array of integers, meaning the minutes to apply the recurrence to.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `bysecond`   | Integer, or array of integers, meaning the seconds to apply the recurrence to.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `byeaster`   | RFC extension provided by the Python implementation. **Not implemented in the JavaScript version.**                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+`noCache`: Set to `true` to disable caching of results. If you use the same `RRule` instance multiple times, enabling caching improves performance considerably. Enabled by default.
+
+See also the [python-dateutil](http://labix.org/python-dateutil/) documentation.
+
+### Instance properties
+
+- **`rule.options`** — Processed options applied to the rule. Includes defaults such as `wkstart`. Note: `rule.options.byweekday` is currently not equal to `rule.origOptions.byweekday` (a known inconsistency).
+- **`rule.origOptions`** — The original `options` argument passed to the constructor.
+
+### Occurrence retrieval methods
+
+#### `RRule.prototype.all([iterator])`
+
+Returns all dates matching the rule. Replacement for the iterator protocol in the Python version.
+
+Rules without `until` or `count` represent infinite date series. You can optionally pass `iterator`, a function called for each matched date. It receives `date` (the `Date` instance) and `i` (zero-indexed position). Dates are added to the result while the iterator returns truthy; returning a falsy value stops iteration.
+
+```ts
+rule.all()
+// → [
+//     2012-02-01T10:30:00.000Z,
+//     2012-05-01T10:30:00.000Z,
+//     2012-07-01T10:30:00.000Z,
+//     2012-07-02T10:30:00.000Z,
+//   ]
+
+rule.all((date, i) => i < 2)
+// → [2012-02-01T10:30:00.000Z, 2012-05-01T10:30:00.000Z]
+```
+
+**Note (DoS backstop):** `.all()` throws `RRuleIterationLimitError` after `IterResult.defaultMaxIterations` accepted dates (default `100_000`). For infinite rules, prefer `.between()` or pass an iterator that stops on your own condition. See [Hardening guards](#hardening-guards).
+
+#### `RRule.prototype.between(after, before, inc=false [, iterator])`
+
+Returns all occurrences between `after` and `before`. The `inc` flag controls whether `after` and `before` are themselves included when they fall on an occurrence.
+
+```ts
+rule.between(datetime(2012, 8, 1), datetime(2012, 9, 1))
+// → [2012-08-27T10:30:00.000Z, 2012-08-31T10:30:00.000Z]
+```
+
+#### `RRule.prototype.before(dt, inc=false)`
+
+Returns the last recurrence before `dt`. With `inc == true`, returns `dt` itself if it is an occurrence.
+
+#### `RRule.prototype.after(dt, inc=false)`
+
+Returns the first recurrence after `dt`. With `inc == true`, returns `dt` itself if it is an occurrence.
+
+### iCalendar RFC string methods
+
+#### `RRule.prototype.toString()`
+
+Returns a string representation of the rule per the iCalendar RFC. Only properties explicitly specified in `options` are included:
+
+```ts
+rule.toString()
+// → 'DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;INTERVAL=5;UNTIL=20130130T230000Z;BYDAY=MO,FR'
+
+rule.toString() === RRule.optionsToString(rule.origOptions)
+// → true
+```
+
+#### `RRule.optionsToString(options)`
+
+Converts `options` to an iCalendar RFC `RRULE` string:
+
+```ts
+// Full string representation of all options, including defaults and inferred ones.
+RRule.optionsToString(rule.options)
+// → 'DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;INTERVAL=5;WKST=0;UNTIL=20130130T230000Z;BYDAY=MO,FR;BYHOUR=10;BYMINUTE=30;BYSECOND=0'
+
+// Cherry-pick only some options from an rrule:
+RRule.optionsToString({
+  freq: rule.options.freq,
+  dtstart: rule.options.dtstart,
+})
+// → 'DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;'
+```
+
+#### `RRule.fromString(rfcString)`
+
+Constructs an `RRule` instance from a complete `rfcString`:
+
+```ts
+const rule = RRule.fromString('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;')
+
+// Equivalent to:
+const sameRule = new RRule(
+  RRule.parseString('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY')
+)
+```
+
+#### `RRule.parseString(rfcString)`
+
+Parses an RFC string and returns `options` (without constructing an `RRule`).
+
+```ts
+const options = RRule.parseString('FREQ=DAILY;INTERVAL=6')
+options.dtstart = datetime(2000, 2, 1)
+const rule = new RRule(options)
+```
+
+`RRule.parseString` throws `RRuleStringTooLargeError` for inputs longer than `parseStringConfig.maxLength` (default 64 KiB), and throws on invalid `INTERVAL` (non-positive integer) and comma-separated `COUNT` / `INTERVAL` / `BYEASTER` values. See [Hardening guards](#hardening-guards).
+
+### Natural language text methods
+
+These methods provide incomplete support for text→`RRule` and `RRule`→text conversion. Test them with your input to see whether the result is acceptable.
+
+#### `RRule.prototype.toText([gettext, [language]])`
+
+Returns a textual representation of `rule`. The `gettext` callback, if provided, is called for each text token; its return value is used instead. The optional `language` argument selects a language definition (defaults to `rrule/nlp.js:ENGLISH`).
+
+```ts
+const rule = new RRule({
+  freq: RRule.WEEKLY,
+  count: 23,
+})
+rule.toText()
+// → 'every week for 23 times'
+```
+
+#### `RRule.prototype.isFullyConvertibleToText()`
+
+Hints whether all options on the rule can be converted to text.
+
+#### `RRule.fromText(text[, language])`
+
+Constructs an `RRule` from `text`.
+
+```ts
+const rule = RRule.fromText('every day for 3 times')
+```
+
+#### `RRule.parseText(text[, language])`
+
+Parse `text` into `options`:
+
+```ts
+const options = RRule.parseText('every day for 3 times')
+// → { freq: 3, count: '3' }
+options.dtstart = datetime(2000, 2, 1)
+const rule = new RRule(options)
+```
+
+### `RRuleSet`
+
+```ts
+new RRuleSet((noCache = false))
+```
+
+Allows more complex recurrence setups, mixing multiple rules, dates, exclusion rules, and exclusion dates.
+
+Default `noCache` is `false`; caching of results is enabled and improves performance of multiple queries considerably.
+
+- **`RRuleSet.prototype.rrule(rrule)`** — Include the given `rrule` instance in the recurrence set generation.
+- **`RRuleSet.prototype.rdate(dt)`** — Include the given datetime `dt` in the recurrence set generation.
+- **`RRuleSet.prototype.exrule(rrule)`** — Include the given `rrule` instance in the exclusion list. Dates matched by exrules are not generated, even if some inclusive `rrule` or `rdate` matches them. **Note:** `EXRULE` is [deprecated in RFC 5545](https://icalendar.org/iCalendar-RFC-5545/a-3-deprecated-features.html) and does not support a `DTSTART` property.
+- **`RRuleSet.prototype.exdate(dt)`** — Include the given datetime `dt` in the exclusion list.
+- **`RRuleSet.prototype.tzid(tz?)`** — Sets or overrides the timezone identifier. Useful when there are no rrules in the set and thus no `DTSTART`.
+- **`RRuleSet.prototype.all([iterator])`** — Same as `RRule.prototype.all`.
+- **`RRuleSet.prototype.between(after, before, inc=false [, iterator])`** — Same as `RRule.prototype.between`.
+- **`RRuleSet.prototype.before(dt, inc=false)`** — Same as `RRule.prototype.before`.
+- **`RRuleSet.prototype.after(dt, inc=false)`** — Same as `RRule.prototype.after`.
+- **`RRuleSet.prototype.rrules()`** — List of included rrules (immutable copy).
+- **`RRuleSet.prototype.exrules()`** — List of excluded rrules (immutable copy).
+- **`RRuleSet.prototype.rdates()`** — List of included datetimes (immutable copy).
+- **`RRuleSet.prototype.exdates()`** — List of excluded datetimes (immutable copy).
+
+### `rrulestr`
+
+```ts
+rrulestr(rruleStr[, options])
+```
+
+`rrulestr` parses RFC-like syntaxes. The string may be a multi-line string, a single-line string, or just the `RRULE` property value.
+
+| Option       | Description                                                                                                                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cache`      | If `true`, the returned `rrule` or `rruleset` will cache its results. Default: not cached.                                                                             |
+| `dtstart`    | A datetime instance used when no `DTSTART` is found in the parsed string. If both are absent, `new Date()` is used.                                                    |
+| `unfold`     | If `true`, lines are unfolded per the RFC. Default `false` (leading spaces on each line are stripped).                                                                 |
+| `forceset`   | If `true`, an `rruleset` is returned even when only a single rule is found. Default is to return an `rrule` when possible, an `rruleset` otherwise.                    |
+| `compatible` | If `true`, the parser operates in RFC-compatible mode: `unfold` is turned on and, if a `DTSTART` is found, it is treated as the first recurrence instance per the RFC. |
+| `tzid`       | A string used when no `TZID` is found in the parsed string. If both are absent, `'UTC'` is used.                                                                       |
+
+`rrulestr` inherits the same `parseStringConfig.maxLength` guard as `RRule.parseString` — oversized inputs throw `RRuleStringTooLargeError` before any structural parsing.
+
+### Hardening guards
+
+The fork ships two configurable backstops against denial-of-service from untrusted input, both exported from the package root.
 
 ```ts
 import {
-  Recurrence,
-  recurrenceToRRule,
-  recurrenceToRRuleString,
-  rruleStringToRecurrence,
-  parseYmdToUtcEndOfDay,
-  formatUtcDateToYmd,
+  parseStringConfig,
+  RRuleStringTooLargeError,
+  RRuleIterationLimitError,
+  IterResult,
+  rrulestr,
 } from '@spiandorello/rrulejs'
-```
 
-#### Build an RRULE string
+// Tighten the parser cap (default 64 KiB):
+parseStringConfig.maxLength = 4096
 
-```ts
-const recurrence: Recurrence = {
-  frequency: 'WEEKLY',
-  interval: 1,
-  byWeekday: ['TU', 'TH'],
-  end: { type: 'until', until: '2026-12-31' },
+// Tighten the iteration cap (default 100_000) for all subsequent IterResult
+// instances:
+IterResult.defaultMaxIterations = 10_000
+
+try {
+  rrulestr(untrustedString).all()
+} catch (e) {
+  if (e instanceof RRuleStringTooLargeError) {
+    // e.actualLength, e.limit
+  } else if (e instanceof RRuleIterationLimitError) {
+    // e.limit — usually means the rule has no COUNT/UNTIL
+  } else {
+    throw e
+  }
 }
-
-const dtstart = new Date('2026-05-12T18:00:00-03:00')
-
-recurrenceToRRuleString(recurrence, dtstart)
-// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
 ```
 
-`INTERVAL=1` is omitted from the output, and the default `UNTIL` mode
-(`inclusive-day-utc`) anchors the end to 23:59:59 UTC on the UNTIL calendar
-day — so an event scheduled later in the day on `2026-12-31` is still
-included, and the serialized bytes are identical regardless of the runtime's
-timezone.
+- **`parseStringConfig.maxLength`** — Maximum accepted input length, in characters. Defaults to `65536` (64 KiB). Mutable at runtime.
+- **`IterResult.defaultMaxIterations`** — Default cap on accepted dates per iteration. Defaults to `100_000`. Mutable at runtime; changes apply to subsequently constructed `IterResult` instances.
+- **`RRuleStringTooLargeError`** — Thrown by `parseString` / `rrulestr` when an input exceeds `parseStringConfig.maxLength`. Exposes `actualLength` and `limit`.
+- **`RRuleIterationLimitError`** — Thrown by `IterResult.add` when the accepted-date count reaches `maxIterations`. Exposes `limit`. Triggered from `.all()`, `.count()`, `.between()`, `.before()`, callback iterators, and `RRuleSet`.
 
-#### Build a fully serialized rule (with DTSTART)
+See [`SECURITY.md`](./SECURITY.md) for the full threat model and the upstream issues these guards close.
 
-```ts
-recurrenceToRRuleString(recurrence, dtstart, { includeDtstart: true })
-// → 'DTSTART:20260512T210000Z\nRRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z'
-```
+## Migration
 
-#### Treat UNTIL as a UTC instant instead of a calendar day
+### From upstream `rrule` (`jkbrzt/rrule`) to `@spiandorello/rrulejs`
 
-```ts
-recurrenceToRRuleString(recurrence, dtstart, { untilMode: 'instant' })
-// → 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T000000Z'
-```
+- **Change the package name.** `npm install @spiandorello/rrulejs`, then update imports from `'rrule'` to `'@spiandorello/rrulejs'`. The exported names (`RRule`, `RRuleSet`, `rrulestr`, `Weekday`, `datetime`, …) are identical.
+- **No UMD bundle.** Browser consumers that loaded upstream via a `<script>` tag must switch to a bundler (Vite, esbuild, webpack, …) or an ESM-capable CDN. Node CJS (`require('@spiandorello/rrulejs')`) and Node ESM (`import { RRule } from '@spiandorello/rrulejs'`) are unaffected.
+- **Iteration cap on infinite rules.** Calls like `new RRule({ freq: RRule.DAILY }).all()` now throw `RRuleIterationLimitError` after 100 000 accepted dates instead of growing without bound. Either add `count` / `until`, switch to `.between()`, pass an iterator that stops on your own condition, or raise `IterResult.defaultMaxIterations`.
+- **Stricter `parseString`.** `RRule.parseString` / `rrulestr` reject inputs above 64 KiB (`RRuleStringTooLargeError`), reject non-positive or non-integer `INTERVAL`, and reject `BYSETPOS` arrays longer than 732 entries. Inputs that previously parsed silently with bogus values may now throw — usually a strict-mode improvement.
+- **`Recurrence` API available.** Consider migrating new code to the [typed Recurrence API](#quick-start--typed-recurrence-api).
 
-#### Use COUNT or no end at all
+### 3.x → 4.x (UMD removed)
 
-```ts
-recurrenceToRRuleString(
-  {
-    frequency: 'WEEKLY',
-    byWeekday: ['MO', 'WE', 'FR'],
-    end: { type: 'count', count: 10 },
-  },
-  dtstart
-)
-// → 'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10'
+The UMD bundle is gone. Browser consumers that loaded the library via a `<script>` tag must switch to a bundler or an ESM-capable CDN. Node CJS (`require('@spiandorello/rrulejs')`) and Node ESM (`import { RRule } from '@spiandorello/rrulejs'`) are unaffected — the `exports` map keeps both entry points resolving to working builds.
 
-recurrenceToRRuleString({ frequency: 'DAILY', end: { type: 'never' } }, dtstart)
-// → 'RRULE:FREQ=DAILY'
-```
+See [#46](https://github.com/spiandorello/rrule/issues/46) for the rationale.
 
-#### Parse an RRULE string back to `Recurrence`
+### 4.x → 5.x (`untilMode` default flipped to `inclusive-day-utc`)
 
-```ts
-rruleStringToRecurrence('RRULE:FREQ=WEEKLY;BYDAY=TU,TH;COUNT=10')
-// → {
-//     frequency: 'WEEKLY',
-//     byWeekday: ['TU', 'TH'],
-//     end: { type: 'count', count: 10 },
-//   }
-```
-
-Unsupported features (`FREQ=HOURLY/MINUTELY/SECONDLY`, `BYSETPOS`, `BYHOUR`,
-`WKST`, `BYDAY` with an nth prefix such as `-1MO`, multi-value `BYMONTH` or
-`BYMONTHDAY`) throw a descriptive error rather than silently dropping data.
-
-#### Hand off to the existing `RRule` API
-
-```ts
-const rule = recurrenceToRRule(recurrence, dtstart)
-rule.all() // Date[]
-rule.between(start, end)
-```
-
-#### Date helpers
-
-```ts
-parseYmdToUtcEndOfDay('2026-12-31')
-// → 2026-12-31T23:59:59.000Z
-
-formatUtcDateToYmd(new Date('2026-05-12T10:00:00Z'))
-// → '2026-05-12'
-```
-
-#### Options summary
-
-| Option           | Value                           | Effect                                                                                                                                                        |
-| ---------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `includeDtstart` | `false` (default)               | When `true`, prepends `DTSTART:...` to the serialized output                                                                                                  |
-| `untilMode`      | `'inclusive-day-utc'` (default) | Anchor `until` at 23:59:59 UTC on the UNTIL calendar day. TZ-independent, roundtrip-clean                                                                     |
-| `untilMode`      | `'inclusive-day'` (deprecated)  | Anchor `until` at 23:59:59 in the runtime's local TZ. Depends on `process.env.TZ` and breaks roundtrip on non-UTC hosts. Emits a one-time deprecation warning |
-| `untilMode`      | `'instant'`                     | Anchor `until` at 00:00:00 UTC on the UNTIL calendar day. TZ-independent but excludes events later in the UNTIL day                                           |
-
-`'inclusive-day-utc'` interprets the `until` string as a UTC calendar day, so
-callers in a timezone ahead of UTC who need local-day semantics should
-pre-convert their `until` value before passing it to `Recurrence`.
-
-#### Migrating from 4.x
-
-Starting in 5.x, `untilMode` defaults to `'inclusive-day-utc'` instead of
-`'inclusive-day'`. The serialized output is now identical across hosts:
+Starting in 5.x, the Typed Recurrence API's `untilMode` defaults to `'inclusive-day-utc'` instead of `'inclusive-day'`. The serialized output is now identical across hosts:
 
 ```
 // 4.x on TZ=America/Sao_Paulo:
@@ -386,527 +662,16 @@ RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20270101T025959Z
 RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231T235959Z
 ```
 
-Callers who relied on the legacy runtime-TZ behavior can pass
-`untilMode: 'inclusive-day'` explicitly. That mode is now deprecated and
-emits a one-time `console.warn`; set `SPIANDORELLO_RRULEJS_NO_WARN=1` in the
-environment to silence it. See
-[issue #61](https://github.com/spiandorello/rrulejs/issues/61) for the
-background.
+Callers who relied on the legacy runtime-TZ behavior can pass `untilMode: 'inclusive-day'` explicitly. That mode is now deprecated and emits a one-time `console.warn`; set `SPIANDORELLO_RRULEJS_NO_WARN=1` in the environment to silence it. See [issue #61](https://github.com/spiandorello/rrule/issues/61) for the background.
 
-### API
+## Differences from iCalendar RFC
 
-#### `RRule` Constructor
+- `RRule` has no `byday` keyword. The equivalent keyword has been replaced by `byweekday` to remove the ambiguity present in the original keyword.
+- Unlike documented in the RFC, the starting datetime `dtstart` is not the first recurrence instance unless it fits the specified rules. This is in part due to the project being a port of [python-dateutil](https://labix.org/python-dateutil#head-a65103993a21b717f6702063f3717e6e75b4ba66), which has the same non-compliant behavior. You can get the original behavior by using an `RRuleSet` and adding `dtstart` as an `rdate`.
 
-```javascript
-new RRule(options[, noCache=false])
-```
-
-The `options` argument mostly corresponds to the properties defined for `RRULE` in the
-iCalendar RFC. Only `freq` is required.
-
-<table>
-    <!-- why, markdown... -->
-    <thead>
-    <tr>
-        <th>Option</th>
-        <th>Description</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr>
-        <td><code>freq</code></td>
-        <td>
-            <p>(required) One of the following constants:</p>
-            <ul>
-                <li><code>RRule.YEARLY</code></li>
-                <li><code>RRule.MONTHLY</code></li>
-                <li><code>RRule.WEEKLY</code></li>
-                <li><code>RRule.DAILY</code></li>
-                <li><code>RRule.HOURLY</code></li>
-                <li><code>RRule.MINUTELY</code></li>
-                <li><code>RRule.SECONDLY</code></li>
-            </ul>
-        </td>
-    </tr>
-    <tr>
-        <td><code>dtstart</code></td>
-        <td>The recurrence start. Besides being the base for the
-            recurrence, missing parameters in the final recurrence
-            instances will also be extracted from this date. If not
-            given, <code>new Date</code> will be used instead.
-            **IMPORTANT:** See the discussion under <a href="#timezone-support">timezone support</a>
-        </td>
-    </tr>
-    <tr>
-        <td><code>interval</code></td>
-        <td>The interval between each freq iteration. For example,
-            when using <code>RRule.YEARLY</code>, an interval of <code>2</code> means
-            once every
-            two years, but with <code>RRule.HOURLY</code>, it means once every two
-            hours.
-            The default interval is <code>1</code>.
-        </td>
-    </tr>
-    <tr>
-        <td><code>wkst</code></td>
-        <td>The week start day. Must be one of the <code>RRule.MO</code>,
-            <code>RRule.TU</code>, <code>RRule.WE</code> constants, or an integer,
-            specifying
-            the first day of the week. This will affect recurrences based
-            on weekly periods. The default week start is <code>RRule.MO</code>.
-        </td>
-    </tr>
-    <tr>
-        <td><code>count</code></td>
-        <td>How many occurrences will be generated.</td>
-    </tr>
-    <tr>
-        <td><code>until</code></td>
-        <td>If given, this must be a <code>Date</code> instance, that will specify
-            the limit of the recurrence. If a recurrence instance happens
-            to be the same as the <code>Date</code> instance given in the
-            <code>until</code>
-            argument, this will be the last occurrence.
-        </td>
-    </tr>
-    <tr>
-      <td><code>tzid</code></td>
-      <td>If given, this must be a IANA string recognized by the Intl API. See
-      discussion under <a href="#timezone-support">Timezone support</a>.
-      </td>
-    </tr>
-    <tr>
-        <td><code>bysetpos</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, positive or negative. Each given integer will specify
-            an occurrence number, corresponding to the nth occurrence of
-            the rule inside the frequency period. For example, a
-            <code>bysetpos</code> of <code>-1</code> if combined with a <code>RRule.MONTHLY</code>
-            frequency, and a byweekday of (<code>RRule.MO</code>, <code>RRule.TU</code>,
-            <code>RRule.WE</code>, <code>RRule.TH</code>, <code>RRule.FR</code>), will result in
-            the last
-            work day of every month.
-        </td>
-    </tr>
-    <tr>
-        <td><code>bymonth</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the months to apply the recurrence to.
-        </td>
-    </tr>
-    <tr>
-        <td><code>bymonthday</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the month days to apply the recurrence to.
-        </td>
-    </tr>
-    <tr>
-        <td><code>byyearday</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the year days to apply the recurrence to.
-        </td>
-    </tr>
-    <tr>
-        <td><code>byweekno</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the week numbers to apply the recurrence to.
-            Week numbers have the meaning described in ISO8601, that is,
-            the first week of the year is that containing at least four
-            days of the new year.
-        </td>
-    </tr>
-    <tr>
-        <td><code>byweekday</code></td>
-        <td>If given, it must be either an integer (<code>0 == RRule.MO</code>), an
-            array of integers, one of the weekday constants
-            (<code>RRule.MO</code>,
-            <code>RRule.TU</code>, etc), or an array of these constants. When
-            given,
-            these variables will define the weekdays where the recurrence
-            will be applied. It's also possible to use an argument n for
-            the weekday instances, which will mean the nth occurrence of
-            this weekday in the period. For example, with
-            <code>RRule.MONTHLY</code>,
-            or with <code>RRule.YEARLY</code> and <code>BYMONTH</code>, using
-            <code>RRule.FR.nth(+1)</code> or <code>RRule.FR.nth(-1)</code> in <code>byweekday</code>
-            will specify the first or last friday of the month where the
-            recurrence happens.
-            Notice
-            that the RFC documentation, this is specified as <code>BYDAY</code>,
-            but was renamed to avoid the ambiguity of that argument.
-        </td>
-    </tr>
-    <tr>
-        <td><code>byhour</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the hours to apply the recurrence to.
-        </td>
-    </tr>
-    <tr>
-        <td><code>byminute</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the minutes to apply the recurrence to.
-        </td>
-    </tr>
-    <tr>
-        <td><code>bysecond</code></td>
-        <td>If given, it must be either an integer, or an array of
-            integers, meaning the seconds to apply the recurrence to.
-        </td>
-    </tr>
-    <tr>
-        <td><code>byeaster</code></td>
-        <td>This is an extension to the RFC specification which the Python
-            implementation provides.
-            <strong>Not implemented in the JavaScript version.</strong>
-        </td>
-    </tr>
-    </tbody>
-</table>
-
-`noCache`: Set to `true` to disable caching of results. If you will use the
-same rrule instance multiple times, enabling caching will improve the
-performance considerably. Enabled by default.
-
-See also [python-dateutil](http://labix.org/python-dateutil/)
-documentation.
-
----
-
-#### Instance properties
-
-<dl>
-    <dt><code>rule.options</code></dt>
-    <dd>Processed options applied to the rule. Includes default options
-    (such us <code>wkstart</code>). Currently,
-    <code>rule.options.byweekday</code> isn't equal
-    to <code>rule.origOptions.byweekday</code> (which is an inconsistency).
-    </dd>
-    <dt><code>rule.origOptions</code></dt>
-    <dd>The original <code>options</code> argument passed to
-    the constructor.</dd>
-</dl>
-
----
-
-#### Occurrence Retrieval Methods
-
-##### `RRule.prototype.all([iterator])`
-
-Returns all dates matching the rule. It is a replacement for the
-iterator protocol this class implements in the Python version.
-
-As rules without `until` or `count` represent infinite date series, you
-can optionally pass `iterator`, which is a function that is called for
-each date matched by the rule. It gets two parameters `date` (the `Date`
-instance being added), and `i` (zero-indexed position of `date` in the
-result). Dates are being added to the result as long as the iterator
-returns `true`. If a `false`-y value is returned, `date` isn't added to
-the result and the iteration is interrupted (possibly prematurely).
-
-```javascript
-rule.all()[
-  ('2012-02-01T10:30:00.000Z',
-  '2012-05-01T10:30:00.000Z',
-  '2012-07-01T10:30:00.000Z',
-  '2012-07-02T10:30:00.000Z')
-]
-
-rule.all(function (date, i) {
-  return i < 2
-})[('2012-02-01T10:30:00.000Z', '2012-05-01T10:30:00.000Z')]
-```
-
-##### `RRule.prototype.between(after, before, inc=false [, iterator])`
-
-Returns all the occurrences of the rrule between `after` and `before`.
-The `inc` keyword defines what happens if `after` and/or `before` are
-themselves occurrences. With `inc == true`, they will be included in the
-list, if they are found in the recurrence set.
-
-Optional `iterator` has the same function as it has with
-`RRule.prototype.all()`.
-
-```javascript
-rule.between(datetime(2012, 8, 1), datetime(2012, 9, 1))[
-  ('2012-08-27T10:30:00.000Z', '2012-08-31T10:30:00.000Z')
-]
-```
-
-##### `RRule.prototype.before(dt, inc=false)`
-
-Returns the last recurrence before the given `Date` instance. The `inc`
-argument defines what happens if `dt` is an occurrence. With
-`inc == true`, if `dt` itself is an occurrence, it will be returned.
-
-##### `RRule.prototype.after(dt, inc=false)`
-
-Returns the first recurrence
-after the given `Date` instance. The `inc` argument defines what happens
-if `dt` is an occurrence. With `inc == true`, if `dt` itself is an
-occurrence, it will be returned.
-
-See also [python-dateutil](http://labix.org/python-dateutil/)
-documentation.
-
----
-
-#### iCalendar RFC String Methods
-
-##### `RRule.prototype.toString()`
-
-Returns a string representation of the rule as per the iCalendar RFC.
-Only properties explicitly specified in `options` are included:
-
-```javascript
-rule.toString()
-;('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;INTERVAL=5;UNTIL=20130130T230000Z;BYDAY=MO,FR')
-
-rule.toString() == RRule.optionsToString(rule.origOptions)
-true
-```
-
-##### `RRule.optionsToString(options)`
-
-Converts `options` to iCalendar RFC `RRULE` string:
-
-```javascript
-// Get full a string representation of all options,
-// including the default and inferred ones.
-RRule.optionsToString(rule.options)
-;('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;INTERVAL=5;WKST=0;UNTIL=20130130T230000Z;BYDAY=MO,FR;BYHOUR=10;BYMINUTE=30;BYSECOND=0')
-
-// Cherry-pick only some options from an rrule:
-RRule.optionsToString({
-  freq: rule.options.freq,
-  dtstart: rule.options.dtstart,
-})
-;('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;')
-```
-
-##### `RRule.fromString(rfcString)`
-
-Constructs an `RRule` instance from a complete `rfcString`:
-
-```javascript
-var rule = RRule.fromString('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY;')
-
-// This is equivalent
-var rule = new RRule(
-  RRule.parseString('DTSTART:20120201T093000Z\nRRULE:FREQ=WEEKLY')
-)
-```
-
-##### `RRule.parseString(rfcString)`
-
-Only parse RFC string and return `options`.
-
-```javascript
-var options = RRule.parseString('FREQ=DAILY;INTERVAL=6')
-options.dtstart = datetime(2000, 2, 1)
-var rule = new RRule(options)
-```
-
----
-
-#### Natural Language Text Methods
-
-These methods provide an incomplete support for text→`RRule` and
-`RRule`→text conversion. You should test them with your input to see
-whether the result is acceptable.
-
-##### `RRule.prototype.toText([gettext, [language]])`
-
-Returns a textual representation of `rule`. The `gettext` callback, if
-provided, will be called for each text token and its return value used
-instead. The optional `language` argument is a language definition to be
-used (defaults to `rrule/nlp.js:ENGLISH`).
-
-```javascript
-var rule = new RRule({
-  freq: RRule.WEEKLY,
-  count: 23,
-})
-rule.toText()
-;('every week for 23 times')
-```
-
-##### `RRule.prototype.isFullyConvertibleToText()`
-
-Provides a hint on whether all the options the rule has are convertible
-to text.
-
-##### `RRule.fromText(text[, language])`
-
-Constructs an `RRule` instance from `text`.
-
-```javascript
-rule = RRule.fromText('every day for 3 times')
-```
-
-##### `RRule.parseText(text[, language])`
-
-Parse `text` into `options`:
-
-```javascript
-options = RRule.parseText('every day for 3 times')
-// {freq: 3, count: "3"}
-options.dtstart = datetime(2000, 2, 1)
-var rule = new RRule(options)
-```
-
----
-
-#### `RRuleSet` Constructor
-
-```javascript
-new RRuleSet([(noCache = false)])
-```
-
-The `RRuleSet` instance allows more complex recurrence setups, mixing multiple
-rules, dates, exclusion rules, and exclusion dates.
-
-Default `noCache` argument is `false`, caching of results will be enabled,
-improving performance of multiple queries considerably.
-
-##### `RRuleSet.prototype.rrule(rrule)`
-
-Include the given `rrule` instance in the recurrence set generation.
-
-##### `RRuleSet.prototype.rdate(dt)`
-
-Include the given datetime instance `dt` in the recurrence set generation.
-
-##### `RRuleSet.prototype.exrule(rrule)`
-
-Include the given `rrule` instance in the recurrence set exclusion list. Dates
-which are part of the given recurrence rules will not be generated, even if
-some inclusive rrule or rdate matches them. **NOTE:** `EXRULE` has been (deprecated
-in RFC 5545)[https://icalendar.org/iCalendar-RFC-5545/a-3-deprecated-features.html]
-and does not support a `DTSTART` property.
-
-##### `RRuleSet.prototype.exdate(dt)`
-
-Include the given datetime instance `dt` in the recurrence set exclusion list. Dates
-included that way will not be generated, even if some inclusive `rrule` or
-`rdate` matches them.
-
-##### `RRuleSet.prototype.tzid(tz?)`
-
-Sets or overrides the timezone identifier. Useful if there are no rrules in this
-`RRuleSet` and thus no `DTSTART`.
-
-##### `RRuleSet.prototype.all([iterator])`
-
-Same as `RRule.prototype.all`.
-
-##### `RRuleSet.prototype.between(after, before, inc=false [, iterator])`
-
-Same as `RRule.prototype.between`.
-
-##### `RRuleSet.prototype.before(dt, inc=false)`
-
-Same as `RRule.prototype.before`.
-
-##### `RRuleSet.prototype.after(dt, inc=false)`
-
-Same as `RRule.prototype.after`.
-
-##### `RRuleSet.prototype.rrules()`
-
-Get list of included rrules in this recurrence set.
-
-##### `RRuleSet.prototype.exrules()`
-
-Get list of excluded rrules in this recurrence set.
-
-##### `RRuleSet.prototype.rdates()`
-
-Get list of included datetimes in this recurrence set.
-
-##### `RRuleSet.prototype.exdates()`
-
-Get list of excluded datetimes in this recurrence set.
-
----
-
-#### `rrulestr` Function
-
-```js
-rrulestr(rruleStr[, options])
-```
-
-The `rrulestr` function is a parser for RFC-like syntaxes. The string passed
-as parameter may be a multiple line string, a single line string, or just the
-`RRULE` property value.
-
-Additionally, it accepts the following keyword arguments:
-
-<dl>
-
-<dt><code>cache</code></dt>
-<dd>
-If <code>true</code>, the <code>rruleset</code> or <code>rrule</code> created instance 
-will cache its results.
-Default is not to cache.
-</dd>
-
-<dt><code>dtstart</code></dt>
-<dd>
-If given, it must be a datetime instance that will be used when no 
-<code>DTSTART</code> property is found in the parsed string. 
-If it is not given, and the property is not found, 
-<code>datetime.now()</code> will be used instead.
-</dd>
-
-<dt><code>unfold</code></dt>
-<dd>
-If set to <code>true</code>, lines will be unfolded following the RFC specification. 
-It defaults to <code>false</code>, meaning that spaces before every line will be stripped.
-</dd>
-
-<dt><code>forceset</code></dt>
-<dd>
-If set to <code>true</code>, an <code>rruleset</code> instance will be returned, 
-even if only a single rule is found. 
-The default is to return an <code>rrule</code> if possible, and 
-an <code>rruleset</code> if necessary.
-</dd>
-
-<dt><code>compatible</code></dt>
-<dd>
-If set to <code>true</code>, the parser will operate in RFC-compatible mode. 
-Right now it means that unfold will be turned on, and if a <code>DTSTART</code> is found, 
-it will be considered the first recurrence instance, as documented in the RFC.
-</dd>
-
-<dt><code>tzid</code></dt>
-<dd>
-If given, it must be a string that will be used when no <code>TZID</code> 
-property is found in the parsed string. 
-If it is not given, and the property is not found, <code>'UTC'</code> will 
-be used by default.
-</dd>
-
-</dl>
-
----
-
-### Differences From iCalendar RFC
-
-- `RRule` has no `byday` keyword. The equivalent keyword has been replaced by
-  the `byweekday` keyword, to remove the ambiguity present in the original
-  keyword.
-- Unlike documented in the RFC, the starting datetime, `dtstart`, is
-  not the first recurrence instance, unless it does fit in the specified rules.
-  This is in part due to this project being a port of
-  [python-dateutil](https://labix.org/python-dateutil#head-a65103993a21b717f6702063f3717e6e75b4ba66),
-  which has the same non-compliant functionality. Note that you can get the
-  original behavior by using a `RRuleSet` and adding the `dtstart` as an `rdate`.
-
-```javascript
-var rruleSet = new RRuleSet()
-var start = datetime(2012, 2, 1, 10, 30)
+```ts
+const rruleSet = new RRuleSet()
+const start = datetime(2012, 2, 1, 10, 30)
 
 // Add a rrule to rruleSet
 rruleSet.rrule(
@@ -921,43 +686,49 @@ rruleSet.rrule(
 rruleSet.rdate(start)
 ```
 
-- Unlike documented in the RFC, every keyword is valid on every frequency. (The
-  RFC documents that `byweekno` is only valid on yearly frequencies, for example.)
+- Unlike documented in the RFC, every keyword is valid on every frequency. (The RFC documents that `byweekno` is only valid on yearly frequencies, for example.)
 
-### Development
+## Development
 
-rrule.js is implemented in Typescript. It uses [JavaScript Standard Style](https://github.com/feross/standard) coding style.
+The library is implemented in TypeScript with strict mode enabled. Builds emit ESM and CJS in parallel via `tsc` (no bundler).
 
-To run the code, checkout this repository and run:
+```bash
+# Install dependencies
+yarn
 
+# Run the test suite
+yarn test
+
+# Build dist/esm and dist/cjs
+yarn build
+
+# Type-check without emitting
+yarn typecheck
+
+# Lint and format
+yarn lint
+yarn format
 ```
-$ yarn
-```
 
-To run the tests, run:
+## Authors
 
-```
-$ yarn test
-```
+**Fork maintainer**
 
-To build files for distribution, run:
+- Eduardo da Veiga Spiandorello — `<eduardo.spiandorello@gmail.com>` ([@spiandorello](https://github.com/spiandorello))
 
-```
-$ yarn build
-```
+**Upstream `rrule` authors**
 
-#### Authors
-
-- [Jakub Roztocil](http://roztocil.co)
-  ([@jkbrzt](http://twitter.com/jkbrzt))
+- [Jakub Roztocil](http://roztocil.co) ([@jkbrzt](http://twitter.com/jkbrzt))
 - Lars Schöning ([@lyschoening](http://twitter.com/lyschoening))
 - David Golightly ([@davigoli](http://twitter.com/davigoli))
 
-Python `dateutil` is written by [Gustavo
-Niemeyer](http://niemeyer.net).
+Python `dateutil` is written by [Gustavo Niemeyer](http://niemeyer.net).
 
-See [LICENCE](https://github.com/spiandorello/rrule/blob/main/LICENCE) for
-more details.
+See [LICENCE](https://github.com/spiandorello/rrule/blob/main/LICENCE) for more details.
+
+## Related projects
+
+- [`rrules.com`](https://rrules.com) — RESTful API to get back occurrences of RRULEs that conform to RFC 5545.
 
 [npm-url]: https://www.npmjs.com/package/@spiandorello/rrulejs
 [npm-image]: https://img.shields.io/npm/v/@spiandorello/rrulejs.svg
@@ -969,7 +740,3 @@ more details.
 [codecov-image]: https://codecov.io/gh/spiandorello/rrule/branch/main/graph/badge.svg
 [license-url]: https://github.com/spiandorello/rrule/blob/main/LICENCE
 [license-image]: https://img.shields.io/npm/l/@spiandorello/rrulejs.svg
-
-#### Related projects
-
-- https://rrules.com — RESTful API to get back occurrences of RRULEs that conform to RFC 5545.
