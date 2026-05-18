@@ -2,7 +2,9 @@
 
 This fork is consumed by an HTTP API that parses RFC 5545 RRULE strings supplied by API clients. The threat model is therefore **untrusted input**, with DoS as the dominant risk class (no RCE surface — there is no `eval`/`Function`/dynamic `require` in the library, and the only runtime dependency is `tslib`).
 
-The list below is ordered by severity, then by exploitability. Checked items are addressed in this fork.
+The list below is ordered by severity, then by exploitability. Checked items are addressed in this fork and shipped in the published `@spiandorello/rrulejs` versions (3.x and later). User-facing knobs (`parseStringConfig.maxLength`, `IterResult.defaultMaxIterations`, `RRuleStringTooLargeError`, `RRuleIterationLimitError`) are documented in the [README's Hardening guards section](./README.md#hardening-guards).
+
+<a id="high"></a>
 
 ## HIGH — single-request process hang or crash
 
@@ -10,11 +12,15 @@ The list below is ordered by severity, then by exploitability. Checked items are
 - [x] **Parity-mismatch hang in HOURLY / MINUTELY / SECONDLY add loops** (e.g. `freq=HOURLY, interval=2, byhour=[1]`). The `for(;;)` loop spins until `MAXYEAR` (~35M iterations) because `byhour.includes(this.hour)` can never match. **Fix:** added `until?` propagation, a `MAX_ADD_ITERATIONS = 100000` hard cap, and forwarded `until` into inner recursive calls (which upstream PR [#622](https://github.com/jkbrzt/rrule/pull/622) missed). When the cap fires, the `DateTime` is forced past `MAXYEAR` (`markExhausted`) so the outer iterator's existing terminal check at `iter/index.ts:100` fires and no invalid candidate is emitted. _src/datetime.ts; regression tests in test/rrule.test.ts (RRule-level: `.all()` returns `[]`) and test/datetime.test.ts._
 - [x] **Unbounded `.all()` / `.count()` on infinite rules.** No `COUNT` / `UNTIL` → builds an array up to `MAXYEAR=9999` and can OOM the process. **Fix:** `IterResult.add()` throws `RRuleIterationLimitError` when the accepted-date count reaches `IterResult.defaultMaxIterations` (default `100_000`, configurable). Applies to `.all()`, `.count()`, `.between()`, `.before()`, callback iterators, and `RRuleSet`. PR [#422](https://github.com/jkbrzt/rrule/pull/422)'s parse-time `isFinite` rejection was rejected as too API-breaking; this runtime backstop is non-breaking for finite rules. _src/iterresult.ts; tests in test/iterresult.test.ts._
 
+<a id="med"></a>
+
 ## MED — degraded performance / footgun
 
 - [x] **O(n²) RFC line unfolding.** `splitIntoLines(unfold=true)` mutated the array via `splice` inside a `while` loop; a payload of N continuation or blank lines was O(N²) (measured: N=100k took ~3.3s, N=200k took ~13.5s). **Fix:** rewrote as a single forward pass that builds the output array — N=100k now completes in ~5ms. Only the `unfold=true` path was affected. _src/rrulestr.ts; perf-regression tests in test/rrulestr.test.ts._
 - [x] **Bracket-assignment in option parser.** Parsed key was lower-cased and assigned via `options[optionKey] = num` with `@ts-ignore`. **Fix:** split the switch into one case per RFC key with explicit, typed assignments (no bracket access, no `@ts-ignore`). Also tightened `parseNumber`: non-numeric values now throw with a per-key error instead of silently storing a string, and `COUNT`/`INTERVAL`/`BYEASTER` reject comma-separated input. _src/parsestring.ts; tests in test/parsestring.test.ts._
 - [x] **`between()` is ~10× slower with TZID** (upstream issue [#580](https://github.com/jkbrzt/rrule/issues/580); reproduced here at ~50× on Node 20). Each accepted candidate hit `dateInTimeZone`, which built three fresh `Intl.DateTimeFormat` instances (twice via `date.toLocaleString(...)`, once via `Intl.DateTimeFormat().resolvedOptions()`). **Fix:** cache one `Intl.DateTimeFormat` per timezone and memoise the local timezone (invalidating on `process.env.TZ` changes). `.between()` over a 5-year DAILY rule went 374ms → 13ms; TZID is now ~2× UTC instead of ~50×. _src/dateutil.ts; perf-regression test in test/datewithzone.test.ts._
+
+<a id="low"></a>
 
 ## LOW — defense in depth
 
