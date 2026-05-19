@@ -14,6 +14,7 @@ export default tseslint.config(
       'node_modules/',
       'jest.config.js',
       'eslint.config.mjs',
+      'playground/',
     ],
   },
   js.configs.recommended,
