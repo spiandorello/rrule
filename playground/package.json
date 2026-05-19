@@ -1,0 +1,30 @@
+{
+  "name": "@spiandorello/rrulejs-playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Interactive demo for @spiandorello/rrulejs, deployed to GitHub Pages.",
+  "scripts": {
+    "prelib": "test -f ../dist/esm/index.js || (cd .. && yarn build)",
+    "predev": "yarn prelib",
+    "prebuild": "yarn prelib",
+    "pretypecheck": "yarn prelib",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.16",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tailwindcss": "^4.1.16",
+    "typescript": "^6.0.3",
+    "vite": "^7.1.12"
+  }
+}
