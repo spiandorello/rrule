@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.0](https://github.com/spiandorello/rrule/compare/v5.0.0...v5.1.0) (2026-05-19)
+
+
+### Features
+
+* **playground:** add interactive demo deployed to GitHub Pages ([c767f13](https://github.com/spiandorello/rrule/commit/c767f133b498e86dc099cc692c4ac595cfb89a27))
+
 ## [5.0.0](https://github.com/spiandorello/rrule/compare/v4.0.0...v5.0.0) (2026-05-14)
 
 
