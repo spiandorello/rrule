@@ -92,10 +92,12 @@ jobs:
       - name: Validate package.json against npm spec
         run: npx --yes publint --pack npm
       - name: Validate published types
-        # Pinned to 0.17.4: 0.18.x has a streaming-gunzip regression that
-        # crashes with "Cannot read properties of undefined (reading
-        # 'filename')" on tarballs larger than a single fflate chunk.
-        run: npx --yes @arethetypeswrong/cli@0.17.4 --pack .
+        # Runs ATTW from devDependencies so the yarn `resolutions` pin of
+        # fflate@0.8.2 is honored. Without that pin, fflate@0.8.3 emits
+        # trailing empty chunks that crash @arethetypeswrong/core with
+        # "Cannot read properties of undefined (reading 'filename')".
+        # Track: https://github.com/arethetypeswrong/arethetypeswrong.github.io/issues/258
+        run: yarn attw --pack .
 
   test:
     runs-on: ubuntu-latest

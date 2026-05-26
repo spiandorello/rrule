@@ -59,7 +59,8 @@
     "format": "yarn prettier --write .",
     "format-check": "yarn prettier --check .",
     "test": "jest **/*.test.ts",
-    "test-ci": "jest --coverage **/*.test.ts"
+    "test-ci": "jest --coverage **/*.test.ts",
+    "attw": "attw"
   },
   "lint-staged": {
     "*.ts": [
@@ -68,6 +69,7 @@
     ]
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
     "@eslint/js": "^10.0.1",
     "@types/assert": "^1.5.11",
     "@types/jest": "^30.0.0",
@@ -107,6 +109,7 @@
     "braces": "^3.0.3",
     "cross-spawn": "^7.0.5",
     "debug": "^4.4.3",
+    "fflate": "0.8.2",
     "flatted": "^3.4.2",
     "js-yaml": "^4.1.1",
     "json5": "^2.2.2",
