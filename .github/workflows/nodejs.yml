@@ -92,7 +92,10 @@ jobs:
       - name: Validate package.json against npm spec
         run: npx --yes publint --pack npm
       - name: Validate published types
-        run: npx --yes @arethetypeswrong/cli --pack .
+        # Pinned to 0.17.4: 0.18.x has a streaming-gunzip regression that
+        # crashes with "Cannot read properties of undefined (reading
+        # 'filename')" on tarballs larger than a single fflate chunk.
+        run: npx --yes @arethetypeswrong/cli@0.17.4 --pack .
 
   test:
     runs-on: ubuntu-latest
