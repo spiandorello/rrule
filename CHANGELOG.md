@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.1](https://github.com/spiandorello/rrule/compare/v5.1.0...v5.1.1) (2026-05-27)
+
+
+### Bug Fixes
+
+* **parser:** short-circuit structurally-impossible BYMONTH+BYMONTHDAY ([0ccbf00](https://github.com/spiandorello/rrule/commit/0ccbf00243628b629e6e28ad735022c7b1887aad)), closes [#69](https://github.com/spiandorello/rrule/issues/69)
+
 ## [5.1.0](https://github.com/spiandorello/rrule/compare/v5.0.0...v5.1.0) (2026-05-26)
 
 
