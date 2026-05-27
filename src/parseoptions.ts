@@ -150,6 +150,14 @@ export function parseOptions(options: Partial<Options>) {
     opts.bymonthday = [opts.bymonthday]
   }
 
+  // Structurally-impossible BYMONTH + BYMONTHDAY combinations (e.g.
+  // BYMONTH=2;BYMONTHDAY=30) never produce occurrences. Detect them upfront
+  // and short-circuit via count=0 instead of letting the iterator spin until
+  // MAX_ADD_ITERATIONS / MAXYEAR. See issue #69.
+  if (isImpossibleByMonthDay(opts.bymonth, opts.bymonthday, opts.bynmonthday)) {
+    opts.count = 0
+  }
+
   // byweekno
   if (isPresent(opts.byweekno) && !isArray(opts.byweekno)) {
     opts.byweekno = [opts.byweekno]
@@ -221,6 +229,46 @@ export function parseOptions(options: Partial<Options>) {
   }
 
   return { parsedOptions: opts as ParsedOptions }
+}
+
+// 29 (not 28) for February to allow leap-year occurrences with BYMONTHDAY=29.
+function maxDaysInMonth(month: number): number {
+  if (month === 2) return 29
+  if (month === 4 || month === 6 || month === 9 || month === 11) return 30
+  return 31
+}
+
+function isImpossibleByMonthDay(
+  bymonth: number[] | null | undefined,
+  bymonthday: number[],
+  bynmonthday: number[]
+): boolean {
+  if (!notEmpty(bymonth)) return false
+  if (!notEmpty(bymonthday) && !notEmpty(bynmonthday)) return false
+
+  for (let i = 0; i < bymonth.length; i++) {
+    const max = maxDaysInMonth(bymonth[i])
+    let monthHasValidDay = false
+
+    for (let j = 0; j < bymonthday.length; j++) {
+      if (bymonthday[j] >= 1 && bymonthday[j] <= max) {
+        monthHasValidDay = true
+        break
+      }
+    }
+    if (!monthHasValidDay) {
+      for (let j = 0; j < bynmonthday.length; j++) {
+        if (bynmonthday[j] <= -1 && -bynmonthday[j] <= max) {
+          monthHasValidDay = true
+          break
+        }
+      }
+    }
+
+    if (monthHasValidDay) return false
+  }
+
+  return true
 }
 
 export function buildTimeset(opts: ParsedOptions) {
