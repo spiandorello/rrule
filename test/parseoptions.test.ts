@@ -127,3 +127,121 @@ describe('bysetpos length cap', () => {
     expect(Date.now() - start).toBeLessThan(50)
   })
 })
+
+// Issue #69 — structurally-impossible BYMONTH + BYMONTHDAY combinations are
+// short-circuited via count=0 so the iterator can exit immediately instead of
+// spinning until MAX_ADD_ITERATIONS.
+describe('BYMONTH x BYMONTHDAY impossibility', () => {
+  it('forces count=0 for BYMONTH=2 with BYMONTHDAY=30', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: 30,
+    })
+    expect(parsedOptions.count).toBe(0)
+  })
+
+  it('forces count=0 for BYMONTH=2 with BYMONTHDAY=31', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: 31,
+    })
+    expect(parsedOptions.count).toBe(0)
+  })
+
+  it('forces count=0 for BYMONTH=2 with BYMONTHDAY=-30', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: -30,
+    })
+    expect(parsedOptions.count).toBe(0)
+  })
+
+  it('forces count=0 for BYMONTH=2 with BYMONTHDAY=-31', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: -31,
+    })
+    expect(parsedOptions.count).toBe(0)
+  })
+
+  it.each([4, 6, 9, 11])(
+    'forces count=0 for BYMONTH=%i with BYMONTHDAY=31',
+    (month) => {
+      const { parsedOptions } = parseOptions({
+        freq: RRule.MONTHLY,
+        bymonth: month,
+        bymonthday: 31,
+      })
+      expect(parsedOptions.count).toBe(0)
+    }
+  )
+
+  it.each([4, 6, 9, 11])(
+    'forces count=0 for BYMONTH=%i with BYMONTHDAY=-31',
+    (month) => {
+      const { parsedOptions } = parseOptions({
+        freq: RRule.MONTHLY,
+        bymonth: month,
+        bymonthday: -31,
+      })
+      expect(parsedOptions.count).toBe(0)
+    }
+  )
+
+  it('preserves count when BYMONTH=2 with BYMONTHDAY=29 (valid in leap years)', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: 29,
+    })
+    expect(parsedOptions.count).toBeNull()
+  })
+
+  it('preserves count when at least one BYMONTH admits a valid day', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: [2, 3],
+      bymonthday: 31,
+    })
+    expect(parsedOptions.count).toBeNull()
+  })
+
+  it('preserves count when at least one BYMONTHDAY is valid for the month', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: [15, 30],
+    })
+    expect(parsedOptions.count).toBeNull()
+  })
+
+  it('preserves count when BYMONTH is absent', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonthday: 30,
+    })
+    expect(parsedOptions.count).toBeNull()
+  })
+
+  it('preserves count when BYMONTHDAY is absent', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+    })
+    expect(parsedOptions.count).toBeNull()
+  })
+
+  it('overrides an explicit COUNT to 0 when impossible (rrule still yields zero)', () => {
+    const { parsedOptions } = parseOptions({
+      freq: RRule.MONTHLY,
+      bymonth: 2,
+      bymonthday: 30,
+      count: 5,
+    })
+    expect(parsedOptions.count).toBe(0)
+  })
+})

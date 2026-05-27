@@ -58,6 +58,115 @@ describe('RRule', function () {
     expect(rule.all()).toEqual([])
   })
 
+  // Issue #69 — structurally-impossible BYMONTH + BYMONTHDAY combinations
+  // (e.g. February 30) used to spin until MAX_ADD_ITERATIONS (~200ms local,
+  // >5s CI). They must short-circuit to empty in under ~50ms.
+  describe('BYMONTH x BYMONTHDAY impossibility (issue #69)', () => {
+    const dtstart = new Date(Date.UTC(2026, 0, 1, 9, 0, 0))
+
+    it('returns [] for .all() with FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30', () => {
+      const rule = rrulestr(
+        'RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30;COUNT=5',
+        { dtstart }
+      )
+      expect(rule.all()).toEqual([])
+    })
+
+    it('returns null for .before() with FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30', () => {
+      const rule = rrulestr(
+        'RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30;COUNT=5',
+        { dtstart }
+      )
+      expect(rule.before(new Date('2027-01-01T00:00:00Z'), false)).toBeNull()
+    })
+
+    it('returns null for .after() with FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30', () => {
+      const rule = rrulestr(
+        'RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30;COUNT=5',
+        { dtstart }
+      )
+      expect(rule.after(new Date(0), true)).toBeNull()
+    })
+
+    it('returns [] for .between() with FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30', () => {
+      const rule = rrulestr(
+        'RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30;COUNT=5',
+        { dtstart }
+      )
+      expect(
+        rule.between(new Date(0), new Date('2030-01-01T00:00:00Z'))
+      ).toEqual([])
+    })
+
+    it('returns 0 for .count() with FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30', () => {
+      const rule = rrulestr(
+        'RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30;COUNT=5',
+        { dtstart }
+      )
+      expect(rule.count()).toBe(0)
+    })
+
+    it.each([
+      ['BYMONTH=2;BYMONTHDAY=31', 2, 31],
+      ['BYMONTH=2;BYMONTHDAY=-30', 2, -30],
+      ['BYMONTH=2;BYMONTHDAY=-31', 2, -31],
+      ['BYMONTH=4;BYMONTHDAY=31', 4, 31],
+      ['BYMONTH=6;BYMONTHDAY=31', 6, 31],
+      ['BYMONTH=9;BYMONTHDAY=31', 9, 31],
+      ['BYMONTH=11;BYMONTHDAY=31', 11, 31],
+      ['BYMONTH=11;BYMONTHDAY=-31', 11, -31],
+    ])('returns [] for %s', (_label, bymonth, bymonthday) => {
+      const rule = new RRule({
+        freq: RRule.MONTHLY,
+        bymonth,
+        bymonthday,
+        dtstart,
+      })
+      expect(rule.all()).toEqual([])
+    })
+
+    it('still produces leap-year occurrences for BYMONTH=2;BYMONTHDAY=29', () => {
+      const rule = new RRule({
+        freq: RRule.YEARLY,
+        bymonth: 2,
+        bymonthday: 29,
+        dtstart: new Date(Date.UTC(2020, 0, 1)),
+        count: 2,
+      })
+      const all = rule.all()
+      expect(all).toHaveLength(2)
+      expect(all[0].getUTCFullYear()).toBe(2020)
+      expect(all[0].getUTCMonth()).toBe(1)
+      expect(all[0].getUTCDate()).toBe(29)
+      expect(all[1].getUTCFullYear()).toBe(2024)
+    })
+
+    it('still produces occurrences when at least one BYMONTH admits the day', () => {
+      const rule = new RRule({
+        freq: RRule.MONTHLY,
+        bymonth: [2, 3],
+        bymonthday: 31,
+        dtstart: new Date(Date.UTC(2024, 0, 1)),
+        count: 2,
+      })
+      const all = rule.all()
+      expect(all).toHaveLength(2)
+      expect(all[0].getUTCMonth()).toBe(2) // March
+      expect(all[1].getUTCMonth()).toBe(2)
+    })
+
+    it('returns from .before()/.after() in under 50ms (perf regression guard)', () => {
+      const rule = rrulestr(
+        'RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=30;COUNT=5',
+        { dtstart }
+      )
+      const t0 = performance.now()
+      rule.before(new Date('2027-01-01T00:00:00Z'), false)
+      rule.after(new Date(0), true)
+      expect(performance.now() - t0).toBeLessThan(50)
+    })
+  })
+
   it('rrulestr rejects INTERVAL=0 at parse time instead of looping', function () {
     ;[
       'FREQ=YEARLY;INTERVAL=0;BYSETPOS=1;BYDAY=MO',
