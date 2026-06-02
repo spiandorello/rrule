@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.2](https://github.com/spiandorello/rrule/compare/v5.1.1...v5.1.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* **build:** ship src so published sourcemaps resolve ([#81](https://github.com/spiandorello/rrule/issues/81)) ([a030849](https://github.com/spiandorello/rrule/commit/a030849c7e2f5f0580d1bb1162a72b9f4241e62b)), closes [#76](https://github.com/spiandorello/rrule/issues/76)
+
 ## [5.1.1](https://github.com/spiandorello/rrule/compare/v5.1.0...v5.1.1) (2026-05-27)
 
 
