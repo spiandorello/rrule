@@ -1903,9 +1903,9 @@ eslint-plugin-import-x@^4.16.2:
     unrs-resolver "^1.9.2"
 
 eslint-plugin-jsdoc@^63.0.0:
-  version "63.0.1"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-jsdoc/-/eslint-plugin-jsdoc-63.0.1.tgz#64993fcccb5692216bcfb660f600cf7468635a61"
-  integrity sha512-2uQ2ShksMXRUI4K96/CyNs5sYmXQHaSoRjn1cxL2RcRHF+9d+njIkT03cZS7/g/eI/fPJTRfjm/MgIlOezD+KQ==
+  version "63.0.2"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-jsdoc/-/eslint-plugin-jsdoc-63.0.2.tgz#e0697dae3f9df3677cba69455279f40f289eb75d"
+  integrity sha512-0TchoK1uS4VxHSo3P4CyWQ31Lm+6zsT+xkHMC5KbFKwgOf8YrXPf1Bl8EP7kpgw1wfe/Ui5jz5mSX7ou8WAVuw==
   dependencies:
     "@es-joy/jsdoccomment" "~0.87.0"
     "@es-joy/resolve.exports" "1.2.0"
@@ -1918,7 +1918,7 @@ eslint-plugin-jsdoc@^63.0.0:
     html-entities "^2.6.0"
     object-deep-merge "^2.0.1"
     parse-imports-exports "^0.2.4"
-    semver "^7.8.1"
+    semver "^7.8.2"
     spdx-expression-parse "^4.0.0"
     to-valid-identifier "^1.0.0"
 
@@ -3377,7 +3377,7 @@ rfdc@^1.4.1:
   resolved "https://registry.yarnpkg.com/rfdc/-/rfdc-1.4.1.tgz#778f76c4fb731d93414e8f925fbecf64cce7f6ca"
   integrity sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==
 
-semver@^6.0.0, semver@^6.3.1, semver@^7.5.2, semver@^7.5.4, semver@^7.7.2, semver@^7.7.3, semver@^7.8.0, semver@^7.8.1:
+semver@^6.0.0, semver@^6.3.1, semver@^7.5.2, semver@^7.5.4, semver@^7.7.2, semver@^7.7.3, semver@^7.8.0, semver@^7.8.2:
   version "7.8.0"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.0.tgz#ed0661039fcbcda2ce71f01fa6adbefaa77040df"
   integrity sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==
