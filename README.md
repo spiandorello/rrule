@@ -596,7 +596,7 @@ rrulestr(rruleStr[, options])
 
 ### Hardening guards
 
-The fork ships two configurable backstops against denial-of-service from untrusted input, both exported from the package root.
+The fork ships configurable backstops against denial-of-service from untrusted input, all exported from the package root. Every input path (`rrulestr`, `RRule.fromString`, `new RRule(options)`, `RRule.fromText` and the typed Recurrence API) also validates option types and ranges (e.g. `BYHOUR` 0–23, `BYMONTH` 1–12, non-negative integer `COUNT`, no control characters in `TZID`) and de-duplicates `BYxxx` lists before iterating.
 
 ```ts
 import {
@@ -614,13 +614,19 @@ parseStringConfig.maxLength = 4096
 // instances:
 IterResult.defaultMaxIterations = 10_000
 
+// Tighten the work cap (default 1_000_000 candidates evaluated, accepted
+// or not):
+IterResult.defaultMaxSteps = 200_000
+
 try {
   rrulestr(untrustedString).all()
 } catch (e) {
   if (e instanceof RRuleStringTooLargeError) {
     // e.actualLength, e.limit
   } else if (e instanceof RRuleIterationLimitError) {
-    // e.limit — usually means the rule has no COUNT/UNTIL
+    // e.kind === 'results': too many dates — usually no COUNT/UNTIL
+    // e.kind === 'steps': too much work — the rule never matches, or the
+    // query window is far from DTSTART
   } else {
     throw e
   }
@@ -629,8 +635,9 @@ try {
 
 - **`parseStringConfig.maxLength`** — Maximum accepted input length, in characters. Defaults to `65536` (64 KiB). Mutable at runtime.
 - **`IterResult.defaultMaxIterations`** — Default cap on accepted dates per iteration. Defaults to `100_000`. Mutable at runtime; changes apply to subsequently constructed `IterResult` instances.
-- **`RRuleStringTooLargeError`** — Thrown by `parseString` / `rrulestr` when an input exceeds `parseStringConfig.maxLength`. Exposes `actualLength` and `limit`.
-- **`RRuleIterationLimitError`** — Thrown by `IterResult.add` when the accepted-date count reaches `maxIterations`. Exposes `limit`. Triggered from `.all()`, `.count()`, `.between()`, `.before()`, callback iterators, and `RRuleSet`.
+- **`IterResult.defaultMaxSteps`** — Default cap on units of work per query: one per iteration period plus one per candidate date evaluated, accepted or not. Defaults to `1_000_000` (roughly 1–4 s of CPU in the worst case). Bounds rules that never produce a match (e.g. `FREQ=SECONDLY;BYSETPOS=2`), `.after()` / `.between()` far from DTSTART, and EXRULE expansion in `RRuleSet`. Mutable at runtime.
+- **`RRuleStringTooLargeError`** — Thrown by `parseString` / `rrulestr` / `RRule.fromText` when an input exceeds `parseStringConfig.maxLength`. Exposes `actualLength` and `limit`.
+- **`RRuleIterationLimitError`** — Thrown when an iteration exceeds `maxIterations` accepted dates (`kind: 'results'`) or `maxSteps` units of work (`kind: 'steps'`). Exposes `limit` and `kind`. Triggered from `.all()`, `.count()`, `.between()`, `.before()`, `.after()`, callback iterators, and `RRuleSet`. `.before()` keeps only the latest date, so it is bounded by `maxSteps` rather than `maxIterations`.
 
 See [`SECURITY.md`](./SECURITY.md) for the full threat model and the upstream issues these guards close.
 

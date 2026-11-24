@@ -2,7 +2,7 @@
 
 This fork is consumed by an HTTP API that parses RFC 5545 RRULE strings supplied by API clients. The threat model is therefore **untrusted input**, with DoS as the dominant risk class (no RCE surface — there is no `eval`/`Function`/dynamic `require` in the library, and the only runtime dependency is `tslib`).
 
-The list below is ordered by severity, then by exploitability. Checked items are addressed in this fork and shipped in the published `@spiandorello/rrulejs` versions (3.x and later). User-facing knobs (`parseStringConfig.maxLength`, `IterResult.defaultMaxIterations`, `RRuleStringTooLargeError`, `RRuleIterationLimitError`) are documented in the [README's Hardening guards section](./README.md#hardening-guards).
+The list below is ordered by severity, then by exploitability. Checked items are addressed in this fork and shipped in the published `@spiandorello/rrulejs` versions (3.x and later). User-facing knobs (`parseStringConfig.maxLength`, `IterResult.defaultMaxIterations`, `IterResult.defaultMaxSteps`, `RRuleStringTooLargeError`, `RRuleIterationLimitError`) are documented in the [README's Hardening guards section](./README.md#hardening-guards).
 
 <a id="high"></a>
 
@@ -12,6 +12,11 @@ The list below is ordered by severity, then by exploitability. Checked items are
 - [x] **Parity-mismatch hang in HOURLY / MINUTELY / SECONDLY add loops** (e.g. `freq=HOURLY, interval=2, byhour=[1]`). The `for(;;)` loop spins until `MAXYEAR` (~35M iterations) because `byhour.includes(this.hour)` can never match. **Fix:** added `until?` propagation, a `MAX_ADD_ITERATIONS = 100000` hard cap, and forwarded `until` into inner recursive calls (which upstream PR [#622](https://github.com/jkbrzt/rrule/pull/622) missed). When the cap fires, the `DateTime` is forced past `MAXYEAR` (`markExhausted`) so the outer iterator's existing terminal check at `iter/index.ts:100` fires and no invalid candidate is emitted. _src/datetime.ts; regression tests in test/rrule.test.ts (RRule-level: `.all()` returns `[]`) and test/datetime.test.ts._
 - [x] **Unbounded `.all()` / `.count()` on infinite rules.** No `COUNT` / `UNTIL` → builds an array up to `MAXYEAR=9999` and can OOM the process. **Fix:** `IterResult.add()` throws `RRuleIterationLimitError` when the accepted-date count reaches `IterResult.defaultMaxIterations` (default `100_000`, configurable). Applies to `.all()`, `.count()`, `.between()`, `.before()`, callback iterators, and `RRuleSet`. PR [#422](https://github.com/jkbrzt/rrule/pull/422)'s parse-time `isFinite` rejection was rejected as too API-breaking; this runtime backstop is non-breaking for finite rules. _src/iterresult.ts; tests in test/iterresult.test.ts._
 
+- [x] **BYHOUR × BYMINUTE × BYSECOND cartesian product → OOM.** `buildTimeset` multiplied the three lists with no range check or de-duplication: a ~3.6 KB string (600 repeated values each) aborted the process with `heap out of memory`, and ~1 KB used ~500 MB per call. **Fix:** `parseOptions` validates every `BYxxx` value against its RFC range and de-duplicates the lists, which caps the timeset at 24×60×61 entries. _src/parseoptions.ts; tests in test/security.test.ts._
+- [x] **Unbounded loop when no candidate is ever accepted.** `COUNT`, `UNTIL` and `defaultMaxIterations` only reacted to emitted dates, so rules like `FREQ=SECONDLY;BYSETPOS=2` (BYSETPOS beyond the period size produced an Invalid Date that compared false against UNTIL) or `FREQ=DAILY;BYMONTH=13` ran until MAXYEAR — effectively forever for sub-daily frequencies. **Fix:** out-of-range BYSETPOS positions are skipped; `UNTIL` is checked against the start of every period; and a step budget (`IterResult.defaultMaxSteps`, default `1_000_000`) charges every period and candidate, throwing `RRuleIterationLimitError` with `kind: 'steps'`. _src/iter/index.ts, src/iter/poslist.ts, src/iterresult.ts; tests in test/security.test.ts._
+- [x] **`after()` / `between()` bypassed the iteration cap.** Candidates before the query window returned early without being counted, so `FREQ=SECONDLY` with an old DTSTART and `.after(now)` hung. **Fix:** covered by the step budget above. _tests in test/security.test.ts._
+- [x] **EXRULE evaluation was O(N²).** `RRuleSet` re-ran every exrule from its DTSTART for each candidate date (`DAILY;COUNT=500` with a MINUTELY exrule took more than 60 s). **Fix:** exrules are expanded incrementally with a doubling window, and their work is charged to the caller's step budget. _src/iterset.ts; tests in test/security.test.ts._
+
 <a id="med"></a>
 
 ## MED — degraded performance / footgun
@@ -20,12 +25,22 @@ The list below is ordered by severity, then by exploitability. Checked items are
 - [x] **Bracket-assignment in option parser.** Parsed key was lower-cased and assigned via `options[optionKey] = num` with `@ts-ignore`. **Fix:** split the switch into one case per RFC key with explicit, typed assignments (no bracket access, no `@ts-ignore`). Also tightened `parseNumber`: non-numeric values now throw with a per-key error instead of silently storing a string, and `COUNT`/`INTERVAL`/`BYEASTER` reject comma-separated input. _src/parsestring.ts; tests in test/parsestring.test.ts._
 - [x] **`between()` is ~10× slower with TZID** (upstream issue [#580](https://github.com/jkbrzt/rrule/issues/580); reproduced here at ~50× on Node 20). Each accepted candidate hit `dateInTimeZone`, which built three fresh `Intl.DateTimeFormat` instances (twice via `date.toLocaleString(...)`, once via `Intl.DateTimeFormat().resolvedOptions()`). **Fix:** cache one `Intl.DateTimeFormat` per timezone and memoise the local timezone (invalidating on `process.env.TZ` changes). `.between()` over a 5-year DAILY rule went 374ms → 13ms; TZID is now ~2× UTC instead of ~50×. _src/dateutil.ts; perf-regression test in test/datewithzone.test.ts._
 
+- [x] **Quadratic regexes on whitespace.** `/^\s+|\s+$/` in `parseString` and `/\s+$/g` in the `unfold` path took ~2.4 s / ~5 s on 64 KiB of spaces. **Fix:** `String.prototype.trim()` / `trimEnd()`. _src/parsestring.ts, src/rrulestr.ts._
+- [x] **Unbounded `Intl.DateTimeFormat` cache keyed by raw TZID.** Case variants of one zone each created and cached a formatter (~1 GB RSS for 30k variants). **Fix:** keys are lower-cased and the cache is a 64-entry LRU. _src/dateutil.ts._
+- [x] **`RRule.fromText` had no input-size cap.** **Fix:** it now honours `parseStringConfig.maxLength`. _src/nlp/parsetext.ts._
+- [x] **`new RRule(options)` did not validate option types.** Strings such as `<img src=x onerror=…>` in `byhour`/`count` were echoed by `toString()` / `toText()`, and a `tzid` containing CRLF injected extra iCalendar properties into `toString()`. **Fix:** runtime validation of integers, ranges, Dates and TZID (no control characters, `;`, `:`, `,` or `"`). Note that `toText()` output is plain text and is **not** HTML-escaped. _src/parseoptions.ts._
+
 <a id="low"></a>
 
 ## LOW — defense in depth
 
 - [x] **No `bysetpos` array length cap.** Values are bounded `[-366, 366]` but `BYSETPOS=1,2,...,10000` was accepted. **Fix:** cap at 732 entries (the count of distinct legal positions: `-366..-1, 1..366`) and reject longer arrays before per-element validation runs. _src/parseoptions.ts; tests in test/parseoptions.test.ts._
 - [x] **No top-level rrule string length cap.** A multi-MB string was parsed before any structural validation. **Fix:** `parseString` and `parseInput` now reject inputs longer than `parseStringConfig.maxLength` (default 64 KiB, mutable) with a typed `RRuleStringTooLargeError` that carries `actualLength` and `limit`. Both are exported from the package root. _src/parsestring.ts, src/rrulestr.ts; tests in test/rrulestr.test.ts._
+
+- [x] **Unbounded `before`/`after`/`between` memoisation.** The per-instance cache grew forever with an O(n) lookup. **Fix:** 64 entries per method (FIFO) and results above 10 000 dates are not cached. _src/cache.ts._
+- [x] **O(n²) RDATE/EXDATE insertion.** Every insert copied and re-sorted the list. **Fix:** binary-search insertion. _src/rruleset.ts._
+- [x] **Prototype keys accepted by the typed API.** `byWeekday: ['constructor']` produced `BYDAY=undefined`. **Fix:** own-property lookups. _src/typedRecurrence/mapper.ts._
+- [x] **Lenient edge cases.** `COUNT=-1` was treated as infinite, unknown `BYDAY`/`WKST` codes produced an untyped `TypeError` or were ignored, and the `DTSTART;TZID=` regex could span lines into the next property. All now throw a descriptive error (or, for the TZID regex, no longer cross lines). _src/parseoptions.ts, src/parsestring.ts._
 
 ## Upstream backports aligned with this hardening theme
 
