@@ -3,9 +3,11 @@ import IterResult, { RRuleIterationLimitError } from '../src/iterresult'
 
 describe('IterResult iteration cap', () => {
   const originalDefault = IterResult.defaultMaxIterations
+  const originalSteps = IterResult.defaultMaxSteps
 
   afterEach(() => {
     IterResult.defaultMaxIterations = originalDefault
+    IterResult.defaultMaxSteps = originalSteps
   })
 
   describe('infinite rules throw RRuleIterationLimitError', () => {
@@ -41,8 +43,19 @@ describe('IterResult iteration cap', () => {
       ).toThrow(RRuleIterationLimitError)
     })
 
-    it('.before() throws when many candidates fall before the boundary', () => {
+    it('.before() keeps only the latest date, so the result cap does not apply', () => {
       IterResult.defaultMaxIterations = 100
+      const rule = new RRule({
+        freq: RRule.MINUTELY,
+        dtstart: new Date(Date.UTC(2024, 0, 1)),
+      })
+      expect(rule.before(new Date(Date.UTC(2024, 0, 2)))).toEqual(
+        new Date(Date.UTC(2024, 0, 1, 23, 59))
+      )
+    })
+
+    it('.before() throws when the step budget is exhausted', () => {
+      IterResult.defaultMaxSteps = 1000
       const rule = new RRule({
         freq: RRule.MINUTELY,
         dtstart: new Date(Date.UTC(2024, 0, 1)),

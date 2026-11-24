@@ -3,6 +3,7 @@ import {
   ParsedOptions,
   freqIsDailyOrGreater,
   QueryMethodTypes,
+  Frequency,
 } from '../types.js'
 import { combine, fromOrdinal, MAXYEAR } from '../dateutil.js'
 import Iterinfo from '../iterinfo/index.js'
@@ -32,6 +33,16 @@ export function iter<M extends QueryMethodTypes>(
   let timeset = makeTimeset(ii, counterDate, options)
 
   for (;;) {
+    iterResult.step()
+
+    // Every candidate of this period falls on or after its start, so once
+    // the period starts past UNTIL nothing else can be emitted. Checking
+    // only emitted candidates is not enough: a rule whose candidates are
+    // all filtered out would otherwise run until MAXYEAR.
+    if (until && periodStart(counterDate, freq) > until.getTime()) {
+      return emitResult(iterResult)
+    }
+
     const [dayset, start, end] = ii.getdayset(freq)(
       counterDate.year,
       counterDate.month,
@@ -43,6 +54,7 @@ export function iter<M extends QueryMethodTypes>(
     if (notEmpty(bysetpos)) {
       const poslist = buildPoslist(bysetpos, timeset, start, end, ii, dayset)
 
+      iterResult.step(bysetpos.length)
       for (let j = 0; j < poslist.length; j++) {
         const res = poslist[j]
         if (until && res > until) {
@@ -71,6 +83,7 @@ export function iter<M extends QueryMethodTypes>(
         }
 
         const date = fromOrdinal(ii.yearordinal + currentDay)
+        iterResult.step(timeset.length)
         for (let k = 0; k < timeset.length; k++) {
           const time = timeset[k]
           const res = combine(date, time)
@@ -115,6 +128,31 @@ export function iter<M extends QueryMethodTypes>(
     }
 
     ii.rebuild(counterDate.year, counterDate.month)
+  }
+}
+
+/**
+ * Start (UTC ms) of the period the iterator is about to expand. Dayset
+ * indexes are relative to the counter's year; sub-yearly periods never
+ * reach back before the counter's month (MONTHLY) or day (WEEKLY, DAILY),
+ * and sub-daily timesets start at the counter's hour, minute or second.
+ */
+function periodStart(counterDate: DateTime, freq: Frequency): number {
+  const { year, month, day, hour, minute, second } = counterDate
+  switch (freq) {
+    case Frequency.YEARLY:
+      return Date.UTC(year, 0, 1)
+    case Frequency.MONTHLY:
+      return Date.UTC(year, month - 1, 1)
+    case Frequency.WEEKLY:
+    case Frequency.DAILY:
+      return Date.UTC(year, month - 1, day)
+    case Frequency.HOURLY:
+      return Date.UTC(year, month - 1, day, hour)
+    case Frequency.MINUTELY:
+      return Date.UTC(year, month - 1, day, hour, minute)
+    default:
+      return Date.UTC(year, month - 1, day, hour, minute, second)
   }
 }
 
