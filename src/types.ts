@@ -9,8 +9,7 @@ export interface QueryMethods {
 
 export type QueryMethodTypes = keyof QueryMethods
 export type IterResultType<M extends QueryMethodTypes> = M extends
-  | 'all'
-  | 'between'
+  'all' | 'between'
   ? Date[]
   : Date | null
 
@@ -27,10 +26,7 @@ export enum Frequency {
 export function freqIsDailyOrGreater(
   freq: Frequency
 ): freq is
-  | Frequency.YEARLY
-  | Frequency.MONTHLY
-  | Frequency.WEEKLY
-  | Frequency.DAILY {
+  Frequency.YEARLY | Frequency.MONTHLY | Frequency.WEEKLY | Frequency.DAILY {
   return freq < Frequency.HOURLY
 }
 

@@ -85,17 +85,15 @@ export function parseOptions(options: Partial<Options>) {
     }
   }
 
-  if (
-    !(
-      Boolean(opts.byweekno as number) ||
-      notEmpty(opts.byweekno as number[]) ||
-      notEmpty(opts.byyearday as number[]) ||
-      Boolean(opts.bymonthday) ||
-      notEmpty(opts.bymonthday as number[]) ||
-      isPresent(opts.byweekday) ||
-      isPresent(opts.byeaster)
-    )
-  ) {
+  if (!(
+    Boolean(opts.byweekno as number) ||
+    notEmpty(opts.byweekno as number[]) ||
+    notEmpty(opts.byyearday as number[]) ||
+    Boolean(opts.bymonthday) ||
+    notEmpty(opts.bymonthday as number[]) ||
+    isPresent(opts.byweekday) ||
+    isPresent(opts.byeaster)
+  )) {
     switch (opts.freq) {
       case RRule.YEARLY:
         if (!opts.bymonth) opts.bymonth = opts.dtstart.getUTCMonth() + 1
