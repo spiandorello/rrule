@@ -1,5 +1,5 @@
 import { RRule } from './rrule.js'
-import { sort, timeToUntilString } from './dateutil.js'
+import { timeToUntilString } from './dateutil.js'
 import { includes } from './helpers.js'
 import IterResult from './iterresult.js'
 import { iterSet } from './iterset.js'
@@ -217,10 +217,19 @@ function _addDate(date: Date, collection: Date[]) {
   if (!(date instanceof Date)) {
     throw new TypeError(String(date) + ' is not Date instance')
   }
-  if (!includes(collection.map(Number), Number(date))) {
-    collection.push(date)
-    sort(collection)
+  // `collection` is kept sorted: binary-search the insertion point instead
+  // of copying and re-sorting the whole array on every insert (O(n²) for
+  // large RDATE/EXDATE lists).
+  const t = date.getTime()
+  let lo = 0
+  let hi = collection.length
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if (collection[mid].getTime() < t) lo = mid + 1
+    else hi = mid
   }
+  if (lo < collection.length && collection[lo].getTime() === t) return
+  collection.splice(lo, 0, date)
 }
 
 function rdatesToString(

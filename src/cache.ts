@@ -4,6 +4,15 @@ import { isArray } from './helpers.js'
 
 export type CacheKeys = 'before' | 'after' | 'between'
 
+/**
+ * Per-method cap on memoised before/after/between calls. Lookups are a
+ * linear scan and every entry can hold up to `maxIterations` dates, so an
+ * unbounded cache lets callers grow memory and lookup time without limit.
+ */
+export const MAX_CACHE_ENTRIES = 64
+/** Results larger than this are not memoised. */
+export const MAX_CACHED_DATES = 10_000
+
 function argsMatch(
   left: IterArgs[keyof IterArgs] | undefined,
   right: IterArgs[keyof IterArgs] | undefined
@@ -41,12 +50,16 @@ export class Cache {
       value = value instanceof Date ? clone(value) : cloneDates(value)
     }
 
+    if (Array.isArray(value) && value.length > MAX_CACHED_DATES) return
+
     if (what === 'all') {
       this.all = value as Date[]
     } else {
       if (!args) return
       args._value = value
-      this[what].push(args as IterArgs)
+      const entries = this[what]
+      if (entries.length >= MAX_CACHE_ENTRIES) entries.shift()
+      entries.push(args as IterArgs)
     }
   }
 

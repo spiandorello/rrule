@@ -210,15 +210,22 @@ export const untilStringToDate = function (until: string) {
 // `.between()` / `.all()` roughly 50× slower in TZID-aware queries than in
 // UTC. Cache one formatter per timezone instead.
 //
-// Use a null-prototype dict rather than `Map`: this module loads under the
-// ES5 build target, and `Map` would be the first ES2015 collection global
-// to land in `src/`. The `Intl` global is required by the existing code
-// path, so no new platform requirement is introduced.
-const formatterCache: Record<string, Intl.DateTimeFormat> = Object.create(null)
+// The key is caller-controlled (TZID), and Intl accepts many spellings of
+// the same zone (case-insensitive, aliases), so the cache is bounded LRU
+// to keep untrusted input from growing it without limit.
+const MAX_FORMATTER_CACHE = 64
+const formatterCache = new Map<string, Intl.DateTimeFormat>()
 
 const getFormatter = function (timeZone: string) {
-  let formatter = formatterCache[timeZone]
-  if (!formatter) {
+  // IANA zone names are case-insensitive in Intl, so "america/new_york" and
+  // "AMERICA/NEW_YORK" must share one entry (and one ICU formatter).
+  const key = timeZone.toLowerCase()
+  let formatter = formatterCache.get(key)
+  if (formatter) {
+    // Refresh recency.
+    formatterCache.delete(key)
+    formatterCache.set(key, formatter)
+  } else {
     formatter = new Intl.DateTimeFormat('sv-SE', {
       timeZone,
       year: 'numeric',
@@ -229,7 +236,11 @@ const getFormatter = function (timeZone: string) {
       second: '2-digit',
       hour12: false,
     })
-    formatterCache[timeZone] = formatter
+    if (formatterCache.size >= MAX_FORMATTER_CACHE) {
+      const oldest = formatterCache.keys().next().value
+      if (oldest !== undefined) formatterCache.delete(oldest)
+    }
+    formatterCache.set(key, formatter)
   }
   return formatter
 }
