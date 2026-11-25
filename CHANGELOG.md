@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.3](https://github.com/spiandorello/rrule/compare/v5.1.2...v5.1.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* **security:** close DoS and injection findings from audit ([#117](https://github.com/spiandorello/rrule/issues/117)) ([67eac44](https://github.com/spiandorello/rrule/commit/67eac448d9e68e1d9c1c8b9594202077b3ee23bf))
+
 ## [5.1.2](https://github.com/spiandorello/rrule/compare/v5.1.1...v5.1.2) (2026-06-02)
 
 
