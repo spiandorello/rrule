@@ -72,7 +72,9 @@ function buildPartialOptions(
     throw new Error('recurrenceToRRule requires a valid dtstart Date')
   }
 
-  if (!(recurrence.frequency in FREQUENCY_MAP)) {
+  if (
+    !Object.prototype.hasOwnProperty.call(FREQUENCY_MAP, recurrence.frequency)
+  ) {
     throw new Error(
       `Unsupported recurrence frequency: '${String(recurrence.frequency)}'`
     )
@@ -96,7 +98,9 @@ function buildPartialOptions(
 
   if (recurrence.byWeekday && recurrence.byWeekday.length > 0) {
     const weekdays: Weekday[] = recurrence.byWeekday.map((w) => {
-      const mapped = WEEKDAY_MAP[w]
+      const mapped = Object.prototype.hasOwnProperty.call(WEEKDAY_MAP, w)
+        ? WEEKDAY_MAP[w]
+        : undefined
       if (!mapped) {
         throw new Error(`Unsupported recurrence weekday: '${String(w)}'`)
       }

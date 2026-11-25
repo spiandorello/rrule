@@ -233,7 +233,7 @@ function splitIntoLines(s: string, unfold = false) {
   const rawLines = s.split('\n')
   const lines: string[] = []
   for (let i = 0; i < rawLines.length; i++) {
-    const line = rawLines[i].replace(/\s+$/g, '')
+    const line = rawLines[i].trimEnd()
     if (!line) continue
     if (line[0] === ' ' && lines.length > 0) {
       lines[lines.length - 1] += line.slice(1)

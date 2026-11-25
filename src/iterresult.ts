@@ -30,21 +30,35 @@ export type NarrowIterArgs<M extends QueryMethodTypes> = M extends 'all'
       : never
 
 /**
- * Thrown when an iteration produces more accepted dates than the
- * configured cap. Used as a DoS backstop against infinite rules
- * (no COUNT / UNTIL) reaching MAXYEAR.
+ * Which budget an iteration exhausted. `'results'`: more accepted dates
+ * than `maxIterations`. `'steps'`: more candidate dates/periods evaluated
+ * than `maxSteps`, accepted or not (e.g. a rule that never matches, or
+ * `after()` / `between()` far from DTSTART).
+ */
+export type RRuleIterationLimitKind = 'results' | 'steps'
+
+/**
+ * Thrown when an iteration exceeds one of its budgets. Used as a DoS
+ * backstop against infinite rules (no COUNT / UNTIL) reaching MAXYEAR and
+ * against rules whose candidates are never accepted.
  */
 export class RRuleIterationLimitError extends Error {
   public readonly limit: number
+  public readonly kind: RRuleIterationLimitKind
 
-  constructor(limit: number) {
+  constructor(limit: number, kind: RRuleIterationLimitKind = 'results') {
     super(
-      `RRule iteration limit (${limit}) exceeded. The rule may be infinite — ` +
-        'add COUNT or UNTIL, narrow the query window, or raise ' +
-        'IterResult.defaultMaxIterations.'
+      kind === 'results'
+        ? `RRule iteration limit (${limit}) exceeded. The rule may be infinite — ` +
+            'add COUNT or UNTIL, narrow the query window, or raise ' +
+            'IterResult.defaultMaxIterations.'
+        : `RRule step limit (${limit}) exceeded while evaluating candidates. ` +
+            'The rule may never match, or the query window may be too far ' +
+            'from DTSTART — narrow it, or raise IterResult.defaultMaxSteps.'
     )
     this.name = 'RRuleIterationLimitError'
     this.limit = limit
+    this.kind = kind
     Object.setPrototypeOf(this, RRuleIterationLimitError.prototype)
   }
 }
@@ -54,23 +68,33 @@ export class RRuleIterationLimitError extends Error {
  */
 export default class IterResult<M extends QueryMethodTypes> {
   public static defaultMaxIterations = 100_000
+  /**
+   * Cap on the number of candidate dates (and iteration periods) evaluated,
+   * accepted or not. Bounds CPU for rules that never produce a match and
+   * for `after()` / `between()` queries far from DTSTART.
+   */
+  public static defaultMaxSteps = 1_000_000
 
   public readonly method: M
   public readonly args: Partial<IterArgs>
   public readonly minDate: Date | null = null
   public readonly maxDate: Date | null = null
   public readonly maxIterations: number
+  public readonly maxSteps: number
   public _result: Date[] = []
   public total = 0
+  public steps = 0
 
   constructor(
     method: M,
     args: Partial<IterArgs>,
-    maxIterations: number = IterResult.defaultMaxIterations
+    maxIterations: number = IterResult.defaultMaxIterations,
+    maxSteps: number = IterResult.defaultMaxSteps
   ) {
     this.method = method
     this.args = args
     this.maxIterations = maxIterations
+    this.maxSteps = maxSteps
 
     if (method === 'between') {
       const a = args as NarrowIterArgs<'between'>
@@ -82,6 +106,18 @@ export default class IterResult<M extends QueryMethodTypes> {
     } else if (method === 'after') {
       const a = args as NarrowIterArgs<'after'>
       this.minDate = a.inc ? a.dt : new Date(a.dt.getTime() + 1)
+    }
+  }
+
+  /**
+   * Charges `n` units of work against the step budget.
+   *
+   * @throws {RRuleIterationLimitError} when the budget is exhausted.
+   */
+  step(n = 1) {
+    this.steps += n
+    if (this.steps > this.maxSteps) {
+      throw new RRuleIterationLimitError(this.maxSteps, 'steps')
     }
   }
 
@@ -103,6 +139,12 @@ export default class IterResult<M extends QueryMethodTypes> {
       if (tooLate) return false
     } else if (this.method === 'before') {
       if (tooLate) return false
+      // Only the latest date before `dt` is ever returned, so keep just
+      // that one instead of accumulating every earlier occurrence.
+      if (!this._result.length || date > this._result[0]) {
+        this._result[0] = date
+      }
+      return true
     } else if (this.method === 'after') {
       if (tooEarly) return true
       this.add(date)
@@ -145,6 +187,11 @@ export default class IterResult<M extends QueryMethodTypes> {
   }
 
   clone() {
-    return new IterResult(this.method, this.args, this.maxIterations)
+    return new IterResult(
+      this.method,
+      this.args,
+      this.maxIterations,
+      this.maxSteps
+    )
   }
 }

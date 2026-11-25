@@ -12,6 +12,7 @@ export function buildPoslist(
   dayset: (number | null)[]
 ) {
   const poslist: Date[] = []
+  if (!timeset.length) return poslist
 
   for (let j = 0; j < bysetpos.length; j++) {
     let daypos: number
@@ -38,6 +39,11 @@ export function buildPoslist(
     } else {
       i = tmp[daypos]
     }
+
+    // A BYSETPOS beyond the number of candidates in this period selects
+    // nothing (RFC 5545). Skip it instead of building an Invalid Date,
+    // which would compare false against UNTIL and never terminate.
+    if (!isPresent(i)) continue
 
     const time = timeset[timepos]
     const date = fromOrdinal(ii.yearordinal + i)

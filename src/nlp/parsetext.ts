@@ -2,6 +2,7 @@ import ENGLISH, { Language } from './i18n.js'
 import { RRule } from '../rrule.js'
 import { ByWeekday, Options } from '../types.js'
 import { WeekdayStr } from '../weekday.js'
+import { parseStringConfig, RRuleStringTooLargeError } from '../parsestring.js'
 
 // =============================================================================
 // Parser
@@ -100,6 +101,10 @@ class Parser {
 }
 
 export default function parseText(text: string, language: Language = ENGLISH) {
+  // Same input-size guard as the RFC string parsers.
+  if (text.length > parseStringConfig.maxLength) {
+    throw new RRuleStringTooLargeError(text.length, parseStringConfig.maxLength)
+  }
   const options: Partial<Options> = {}
   const ttr = new Parser(language.tokens)
 

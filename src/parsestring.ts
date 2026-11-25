@@ -52,9 +52,10 @@ export function parseString(rfcString: string): Partial<Options> {
 export function parseDtstart(line: string) {
   const options: Partial<Options> = {}
 
-  const dtstartWithZone = /DTSTART(?:;TZID=([^:=]+?))?(?::|=)([^;\s]+)/i.exec(
-    line
-  )
+  // TZID must not span delimiters or lines (rrulestr passes the whole
+  // multi-line input here).
+  const dtstartWithZone =
+    /DTSTART(?:;TZID=([^:=;\r\n]+?))?(?::|=)([^;\s]+)/i.exec(line)
 
   if (!dtstartWithZone) {
     return options
@@ -70,7 +71,9 @@ export function parseDtstart(line: string) {
 }
 
 function parseLine(rfcString: string) {
-  rfcString = rfcString.replace(/^\s+|\s+$/, '')
+  // trim() is linear; the previous /^\s+|\s+$/ regex was quadratic on long
+  // runs of inner whitespace.
+  rfcString = rfcString.trim()
   if (!rfcString.length) return null
 
   const header = /^([A-Z]+?)[:;]/.exec(rfcString.toUpperCase())
@@ -103,7 +106,7 @@ function parseRrule(line: string) {
         options.freq = Frequency[value.toUpperCase() as keyof typeof Frequency]
         break
       case 'WKST':
-        options.wkst = Days[value.toUpperCase() as keyof typeof Days]
+        options.wkst = lookupDay(value.toUpperCase())
         break
       case 'COUNT':
         options.count = parseScalarNumber(key, value)
@@ -189,7 +192,7 @@ function parseWeekday(value: string) {
   return days.map((day) => {
     if (day.length === 2) {
       // MO, TU, ...
-      return Days[day as keyof typeof Days] // wday instanceof Weekday
+      return lookupDay(day) // wday instanceof Weekday
     }
 
     // -1MO, +3FR, 1SO, 13TU ...
@@ -199,7 +202,14 @@ function parseWeekday(value: string) {
     }
     const n = Number(parts[1])
     const wdaypart = parts[2] as keyof typeof Days
-    const wday = Days[wdaypart].weekday
+    const wday = lookupDay(wdaypart).weekday
     return new Weekday(wday, n)
   })
+}
+
+function lookupDay(code: string): Weekday {
+  if (!Object.prototype.hasOwnProperty.call(Days, code)) {
+    throw new SyntaxError(`Invalid weekday string: ${code}`)
+  }
+  return Days[code as keyof typeof Days]
 }

@@ -122,7 +122,15 @@ export function parseOptions(options: Partial<Options>) {
     opts.byyearday = [opts.byyearday]
   }
 
-  // bymonthday
+  // bymonthday (0 is accepted and ignored, as before)
+  validateIntList(
+    'bymonthday',
+    isPresent(opts.bymonthday) && !isArray(opts.bymonthday)
+      ? [opts.bymonthday]
+      : opts.bymonthday,
+    -31,
+    31
+  )
   if (!isPresent(opts.bymonthday)) {
     opts.bymonthday = []
     opts.bynmonthday = []
@@ -226,7 +234,149 @@ export function parseOptions(options: Partial<Options>) {
     opts.bysecond = [opts.bysecond]
   }
 
+  validateParsedOptions(opts as ParsedOptions)
+
   return { parsedOptions: opts as ParsedOptions }
+}
+
+// TZID ends up verbatim in toString() output (`DTSTART;TZID=<tzid>:...`).
+// Control characters (CR/LF in particular) and iCalendar delimiters would
+// let a caller inject extra properties, so reject them. Windows-style names
+// with spaces ("W. Europe Standard Time") are still accepted.
+// eslint-disable-next-line no-control-regex
+const UNSAFE_TZID = /[\u0000-\u001f\u007f;:,"]/
+const MAX_TZID_LENGTH = 256
+
+function invalid(name: string, detail: string): never {
+  throw new Error(`Invalid ${name}: ${detail}`)
+}
+
+function isInteger(value: unknown): value is number {
+  return isNumber(value) && Number.isInteger(value)
+}
+
+/**
+ * Validates that every element of `list` is an integer in [min, max]
+ * (excluding 0 when `allowZero` is false) and returns it de-duplicated.
+ * De-duplication bounds every BYxxx list by the size of its value domain,
+ * which in turn bounds the BYHOUR×BYMINUTE×BYSECOND timeset.
+ */
+function validateIntList(
+  name: string,
+  list: unknown,
+  min: number,
+  max: number,
+  allowZero = true
+): number[] | null {
+  if (!isPresent(list)) return null
+  if (!isArray(list)) invalid(name, 'expected an array of integers')
+
+  const seen: { [k: number]: true } = Object.create(null)
+  const out: number[] = []
+  for (let i = 0; i < list.length; i++) {
+    const v: unknown = list[i]
+    if (!isInteger(v) || v < min || v > max || (!allowZero && v === 0)) {
+      invalid(
+        name,
+        `expected integers between ${min} and ${max}` +
+          (allowZero ? '' : ' (excluding 0)') +
+          `, got ${String(v)}`
+      )
+    }
+    if (!seen[v]) {
+      seen[v] = true
+      out.push(v)
+    }
+  }
+  return out
+}
+
+function validateParsedOptions(opts: ParsedOptions) {
+  if (!isValidDate(opts.dtstart)) invalid('dtstart', 'expected a valid Date')
+  if (isPresent(opts.until) && !isValidDate(opts.until)) {
+    invalid('until', 'expected a valid Date')
+  }
+
+  if (isPresent(opts.count) && (!isInteger(opts.count) || opts.count < 0)) {
+    invalid('count', `expected a non-negative integer, got ${opts.count}`)
+  }
+
+  if (!isInteger(opts.wkst) || opts.wkst < 0 || opts.wkst > 6) {
+    invalid('wkst', `expected an integer between 0 and 6, got ${opts.wkst}`)
+  }
+
+  if (isPresent(opts.tzid)) {
+    if (
+      typeof opts.tzid !== 'string' ||
+      !opts.tzid.length ||
+      opts.tzid.length > MAX_TZID_LENGTH ||
+      UNSAFE_TZID.test(opts.tzid)
+    ) {
+      invalid('tzid', JSON.stringify(String(opts.tzid).slice(0, 64)))
+    }
+  }
+
+  if (
+    isPresent(opts.byeaster) &&
+    (!isInteger(opts.byeaster) || opts.byeaster < -366 || opts.byeaster > 366)
+  ) {
+    invalid('byeaster', `expected an integer between -366 and 366`)
+  }
+
+  opts.bysetpos = validateIntList(
+    'bysetpos',
+    opts.bysetpos,
+    -366,
+    366,
+    false
+  ) as number[]
+  opts.bymonth = validateIntList(
+    'bymonth',
+    opts.bymonth,
+    1,
+    12,
+    false
+  ) as number[]
+  opts.bymonthday =
+    validateIntList('bymonthday', opts.bymonthday, 1, 31, false) ?? []
+  opts.bynmonthday =
+    validateIntList('bymonthday', opts.bynmonthday, -31, -1, false) ?? []
+  opts.byyearday = validateIntList(
+    'byyearday',
+    opts.byyearday,
+    -366,
+    366,
+    false
+  ) as number[]
+  opts.byweekno = validateIntList(
+    'byweekno',
+    opts.byweekno,
+    -53,
+    53,
+    false
+  ) as number[]
+  opts.byweekday = validateIntList(
+    'byweekday',
+    opts.byweekday,
+    0,
+    6
+  ) as number[]
+  opts.byhour = validateIntList('byhour', opts.byhour, 0, 23) as number[]
+  opts.byminute = validateIntList('byminute', opts.byminute, 0, 59) as number[]
+  opts.bysecond = validateIntList('bysecond', opts.bysecond, 0, 60) as number[]
+
+  if (isPresent(opts.bynweekday)) {
+    if (!isArray(opts.bynweekday)) invalid('byweekday', 'expected an array')
+    for (let i = 0; i < opts.bynweekday.length; i++) {
+      const [wday, n] = opts.bynweekday[i]
+      if (!isInteger(wday) || wday < 0 || wday > 6) {
+        invalid('byweekday', `expected a weekday between 0 and 6, got ${wday}`)
+      }
+      if (!isInteger(n) || n === 0 || n < -53 || n > 53) {
+        invalid('byweekday', `expected an ordinal between -53 and 53, got ${n}`)
+      }
+    }
+  }
 }
 
 // 29 (not 28) for February to allow leap-year occurrences with BYMONTHDAY=29.

@@ -13,9 +13,10 @@ export default class CallbackIterResult extends IterResult<'all' | 'between'> {
     method: 'all' | 'between',
     args: Partial<IterArgs>,
     iterator: Iterator,
-    maxIterations: number = IterResult.defaultMaxIterations
+    maxIterations: number = IterResult.defaultMaxIterations,
+    maxSteps: number = IterResult.defaultMaxSteps
   ) {
-    super(method, args, maxIterations)
+    super(method, args, maxIterations, maxSteps)
 
     this.iterator = iterator
   }
